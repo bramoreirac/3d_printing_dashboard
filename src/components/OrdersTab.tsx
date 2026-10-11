@@ -37,6 +37,12 @@ const emptyForm = (machines: Machine[], materials: Material[]): FormState => ({
   amountPaid: '0',
 })
 
+const required = 'Obligatorio'
+const mustBePositive = 'Debe ser mayor a 0'
+const laborInvalid = 'Debe ser ≥ 0 (o dejar vacío)'
+const paidInvalid = 'Debe ser ≥ 0'
+const paidTooHigh = 'No puede superar el precio'
+
 export function OrdersTab({ orders, machines, materials, settings, onSaveOrder }: OrdersTabProps) {
   const [form, setForm] = useState<FormState>(() => emptyForm(machines, materials))
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -69,21 +75,21 @@ export function OrdersTab({ orders, machines, materials, settings, onSaveOrder }
 
   function validate(): boolean {
     const next: Record<string, string> = {}
-    if (!form.clientName.trim()) next.clientName = 'Required'
-    if (!form.designName.trim()) next.designName = 'Required'
+    if (!form.clientName.trim()) next.clientName = required
+    if (!form.designName.trim()) next.designName = required
     const grams = parseFloat(form.grams)
-    if (!isFinite(grams) || grams <= 0) next.grams = 'Must be > 0'
+    if (!isFinite(grams) || grams <= 0) next.grams = mustBePositive
     const hours = parseFloat(form.printHours)
-    if (!isFinite(hours) || hours <= 0) next.printHours = 'Must be > 0'
+    if (!isFinite(hours) || hours <= 0) next.printHours = mustBePositive
     const price = parseFloat(form.priceTotal)
-    if (!isFinite(price) || price <= 0) next.priceTotal = 'Must be > 0'
+    if (!isFinite(price) || price <= 0) next.priceTotal = mustBePositive
     const laborRaw = form.laborCost.trim()
     if (laborRaw !== '' && (!isFinite(parseFloat(laborRaw)) || parseFloat(laborRaw) < 0)) {
-      next.laborCost = 'Must be ≥ 0 (or blank)'
+      next.laborCost = laborInvalid
     }
     const paid = parseFloat(form.amountPaid)
-    if (!isFinite(paid) || paid < 0) next.amountPaid = 'Must be ≥ 0'
-    else if (isFinite(price) && paid > price) next.amountPaid = 'Cannot exceed price'
+    if (!isFinite(paid) || paid < 0) next.amountPaid = paidInvalid
+    else if (isFinite(price) && paid > price) next.amountPaid = paidTooHigh
     setErrors(next)
     return Object.keys(next).length === 0
   }
@@ -130,19 +136,19 @@ export function OrdersTab({ orders, machines, materials, settings, onSaveOrder }
     <>
       <div className="kpi-row">
         <div className="kpi">
-          <div className="kpi-label">Orders</div>
+          <div className="kpi-label">Pedidos</div>
           <div className="kpi-value">{openOrders.length}</div>
         </div>
         <div className="kpi">
-          <div className="kpi-label">Total quoted</div>
+          <div className="kpi-label">Total cotizado</div>
           <div className="kpi-value">{formatMoney(totals.revenue)}</div>
         </div>
         <div className="kpi">
-          <div className="kpi-label">Collected</div>
+          <div className="kpi-label">Cobrado</div>
           <div className="kpi-value">{formatMoney(paid)}</div>
         </div>
         <div className="kpi">
-          <div className="kpi-label">Est. profit</div>
+          <div className="kpi-label">Ganancia estimada</div>
           <div className={`kpi-value ${totals.profit >= 0 ? 'profit-positive' : 'profit-negative'}`}>
             {formatMoney(totals.profit)}
           </div>
@@ -152,11 +158,11 @@ export function OrdersTab({ orders, machines, materials, settings, onSaveOrder }
       <div className="grid-2">
         <form className="card" onSubmit={handleSubmit} noValidate>
           <h3>
-            <Calculator size={16} aria-hidden="true" /> New quote
+            <Calculator size={16} aria-hidden="true" /> Nueva cotización
           </h3>
           <div className="form-grid">
             <SelectField
-              label="Machine"
+              label="Impresora"
               value={form.machineId}
               onChange={(v) => set('machineId', v)}
               options={activeMachines.map((m) => ({ value: m.id, label: m.name }))}
@@ -167,13 +173,13 @@ export function OrdersTab({ orders, machines, materials, settings, onSaveOrder }
               onChange={(v) => set('materialId', v)}
               options={activeMaterials.map((m) => ({ value: m.id, label: m.name }))}
             />
-            <TextField label="Client" value={form.clientName} onChange={(v) => set('clientName', v)} error={errors.clientName} placeholder="e.g. Roberto Gómez" />
-            <TextField label="Design / piece" value={form.designName} onChange={(v) => set('designName', v)} error={errors.designName} placeholder="e.g. Lithophane lamp" />
-            <TextField label="Grams" type="number" step="0.01" min="0" value={form.grams} onChange={(v) => set('grams', v)} error={errors.grams} placeholder="120" />
-            <TextField label="Print hours" type="number" step="0.01" min="0" value={form.printHours} onChange={(v) => set('printHours', v)} error={errors.printHours} placeholder="5" />
-            <TextField label="Labor cost (optional)" type="number" step="0.01" min="0" value={form.laborCost} onChange={(v) => set('laborCost', v)} error={errors.laborCost} placeholder="blank = none" />
-            <TextField label="Price charged (USD)" type="number" step="0.01" min="0" value={form.priceTotal} onChange={(v) => set('priceTotal', v)} error={errors.priceTotal} placeholder="25.00" />
-            <TextField label="Amount paid" type="number" step="0.01" min="0" value={form.amountPaid} onChange={(v) => set('amountPaid', v)} error={errors.amountPaid} placeholder="0.00" />
+            <TextField label="Cliente" value={form.clientName} onChange={(v) => set('clientName', v)} error={errors.clientName} placeholder="Ej. Roberto Gómez" />
+            <TextField label="Diseño / pieza" value={form.designName} onChange={(v) => set('designName', v)} error={errors.designName} placeholder="Ej. Lámpara de litofanía" />
+            <TextField label="Gramos" type="number" step="0.01" min="0" value={form.grams} onChange={(v) => set('grams', v)} error={errors.grams} placeholder="120" />
+            <TextField label="Horas de impresión" type="number" step="0.01" min="0" value={form.printHours} onChange={(v) => set('printHours', v)} error={errors.printHours} placeholder="5" />
+            <TextField label="Mano de obra (opcional)" type="number" step="0.01" min="0" value={form.laborCost} onChange={(v) => set('laborCost', v)} error={errors.laborCost} placeholder="vacío = sin costo" />
+            <TextField label="Precio cobrado (USD)" type="number" step="0.01" min="0" value={form.priceTotal} onChange={(v) => set('priceTotal', v)} error={errors.priceTotal} placeholder="25.00" />
+            <TextField label="Monto cobrado" type="number" step="0.01" min="0" value={form.amountPaid} onChange={(v) => set('amountPaid', v)} error={errors.amountPaid} placeholder="0.00" />
           </div>
 
           {draft && (
@@ -183,29 +189,29 @@ export function OrdersTab({ orders, machines, materials, settings, onSaveOrder }
                 <span>{formatMoney(draft.materialCost)}</span>
               </div>
               <div className="breakdown-row">
-                <span>Energy ({settings.printerWatts}W × {form.printHours || 0}h)</span>
+                <span>Energía ({settings.printerWatts}W × {form.printHours || 0}h)</span>
                 <span>{formatMoney(draft.energyCost)}</span>
               </div>
               <div className="breakdown-row">
-                <span>Machine wear ({form.printHours || 0}h)</span>
+                <span>Desgaste de máquina ({form.printHours || 0}h)</span>
                 <span>{formatMoney(draft.wearCost)}</span>
               </div>
               {draft.laborCost > 0 && (
                 <div className="breakdown-row">
-                  <span>Labor</span>
+                  <span>Mano de obra</span>
                   <span>{formatMoney(draft.laborCost)}</span>
                 </div>
               )}
               <div className="breakdown-row breakdown-total">
-                <span>Total cost</span>
+                <span>Costo total</span>
                 <span>{formatMoney(draft.totalCost)}</span>
               </div>
               <div className="breakdown-row">
-                <span>Profit</span>
+                <span>Ganancia</span>
                 <span className={draft.profit >= 0 ? 'profit-positive' : 'profit-negative'}>
                   {formatMoney(draft.profit)}
                   {draft.marginPct !== null && (
-                    <span className="muted"> · {draft.marginPct.toFixed(1)}% margin</span>
+                    <span className="muted"> · {draft.marginPct.toFixed(1)}% margen</span>
                   )}
                 </span>
               </div>
@@ -214,35 +220,36 @@ export function OrdersTab({ orders, machines, materials, settings, onSaveOrder }
 
           <div className="form-actions">
             <button type="submit" className="btn" disabled={!draft}>
-              <Plus size={16} aria-hidden="true" /> Save order
+              <Plus size={16} aria-hidden="true" /> Guardar pedido
             </button>
             {savedFlash && (
               <span className="small profit-positive" role="status">
-                Order saved (prototype — in memory only)
+                Pedido guardado (prototipo — solo en memoria)
               </span>
             )}
           </div>
         </form>
 
         <div className="card">
-          <h3>How costs are calculated</h3>
+          <h3>Cómo se calculan los costos</h3>
           <p className="small muted">
-            Same formulas as the original prototype. Rates come from each machine's
-            configuration; material price is snapshotted when the order is saved.
+            Las mismas fórmulas del prototipo original. Las tarifas vienen de la
+            configuración de cada impresora; el precio del material se guarda al
+            momento de crear el pedido.
           </p>
           {machine && (
             <div>
               <div className="machine-line">
-                <span>Amortization ({formatMoney(machine.purchasePrice)} / {machine.usefulLifeHours}h)</span>
+                <span>Amortización ({formatMoney(machine.purchasePrice)} / {machine.usefulLifeHours}h)</span>
                 <span className="num-val">{formatMoney((machine.purchasePrice - machine.residualValue) / machine.usefulLifeHours)}/h</span>
               </div>
               <div className="machine-line">
-                <span>Maintenance ({formatMoney(machine.annualMaintenanceCost)} / {machine.annualUsageHours}h)</span>
+                <span>Mantenimiento ({formatMoney(machine.annualMaintenanceCost)} / {machine.annualUsageHours}h)</span>
                 <span className="num-val">{formatMoney(machine.annualMaintenanceCost / machine.annualUsageHours)}/h</span>
               </div>
               <div className="machine-line">
                 <span>
-                  <strong>Wear rate — {machine.name}</strong>
+                  <strong>Tasa de desgaste — {machine.name}</strong>
                 </span>
                 <span className="num-val">
                   <strong>
@@ -257,22 +264,22 @@ export function OrdersTab({ orders, machines, materials, settings, onSaveOrder }
       </div>
 
       <div className="card">
-        <h3>Order history</h3>
+        <h3>Historial de pedidos</h3>
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Client</th>
-                <th>Design</th>
-                <th>Machine</th>
+                <th>Fecha</th>
+                <th>Cliente</th>
+                <th>Diseño</th>
+                <th>Impresora</th>
                 <th className="num">g</th>
-                <th className="num">Hours</th>
-                <th className="num">Cost</th>
-                <th className="num">Price</th>
-                <th className="num">Paid</th>
-                <th className="num">Profit</th>
-                <th>Payment</th>
+                <th className="num">Horas</th>
+                <th className="num">Costo</th>
+                <th className="num">Precio</th>
+                <th className="num">Cobrado</th>
+                <th className="num">Ganancia</th>
+                <th>Pago</th>
               </tr>
             </thead>
             <tbody>

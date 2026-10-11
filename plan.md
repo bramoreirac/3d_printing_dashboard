@@ -11,6 +11,7 @@ The MVP has two tabs:
 - **Machines & Supplies:** machines, maintenance records, depreciation inputs, consumables, and low-stock indicators.
 
 Confirmed with the owner (from their original prototype in `tab_pedidos3d.md` and `tab_flota_uso_horas.md`):
+- The interface language is Spanish (the owner only reads Spanish); code, comments, and database identifiers stay in English.
 - Currency is USD throughout.
 - Labor cost is an optional order line item; the prototype charges only material, electricity, and machine wear.
 - Materials have individual prices: each order references a material and snapshots the price used at the time (replaces the prototype's single global filament price).

@@ -20,15 +20,15 @@ export default function App() {
   const [orders, setOrders] = useState<Order[]>(sampleOrders)
 
   const tabs: { id: Tab; label: string; icon: typeof Calculator }[] = [
-    { id: 'orders', label: 'Quotes & Profitability', icon: Calculator },
-    { id: 'fleet', label: 'Machines & Supplies', icon: Boxes },
+    { id: 'orders', label: 'Cotizaciones y Rentabilidad', icon: Calculator },
+    { id: 'fleet', label: 'Máquinas y Materiales', icon: Boxes },
   ]
 
   return (
     <>
       <header className="app-header">
-        <h1>3D Print Dashboard</h1>
-        <nav className="tab-nav" role="tablist" aria-label="Main sections">
+        <h1>Panel de Impresión 3D</h1>
+        <nav className="tab-nav" role="tablist" aria-label="Secciones principales">
           {tabs.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -44,11 +44,11 @@ export default function App() {
 
       <main className="page">
         <div className="page-intro">
-          <h2>{tab === 'orders' ? 'Quotes & Profitability' : 'Machines & Supplies'}</h2>
+          <h2>{tab === 'orders' ? 'Cotizaciones y Rentabilidad' : 'Máquinas y Materiales'}</h2>
           <p>
             {tab === 'orders'
-              ? 'Calculate quotes, track orders, and see estimated profit per job.'
-              : 'Fleet wear rates, maintenance due dates, and consumable stock levels.'}
+              ? 'Calcula cotizaciones, registra pedidos y revisa la ganancia estimada de cada trabajo.'
+              : 'Tarifas de desgaste de la flota, fechas de mantenimiento y existencias de insumos.'}
           </p>
         </div>
 

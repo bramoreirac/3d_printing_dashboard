@@ -34,20 +34,20 @@ export function FleetTab({ machines, materials, supplies, maintenance, orders }:
     <>
       <div className="card">
         <h3>
-          <Settings size={16} aria-hidden="true" /> Fleet &amp; hourly rates
+          <Settings size={16} aria-hidden="true" /> Flota y tarifas por hora
         </h3>
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Machine</th>
-                <th className="num">Investment</th>
-                <th className="num">Life (h)</th>
+                <th>Impresora</th>
+                <th className="num">Inversión</th>
+                <th className="num">Vida útil (h)</th>
                 <th className="num">Amort./h</th>
-                <th className="num">Maint./h</th>
-                <th className="num">Wear rate</th>
-                <th className="num">Hours used</th>
-                <th>Status</th>
+                <th className="num">Mant./h</th>
+                <th className="num">Tarifa desgaste</th>
+                <th className="num">Horas usadas</th>
+                <th>Estado</th>
               </tr>
             </thead>
             <tbody>
@@ -70,7 +70,7 @@ export function FleetTab({ machines, materials, supplies, maintenance, orders }:
                     <td className="num">{hoursRegistered(m.id, orders).toFixed(1)}</td>
                     <td>
                       <span className={`badge ${m.isActive ? 'badge-ok' : 'badge-partial'}`}>
-                        {m.isActive ? 'Active' : 'Retired'}
+                        {m.isActive ? 'Activa' : 'Retirada'}
                       </span>
                     </td>
                   </tr>
@@ -80,25 +80,25 @@ export function FleetTab({ machines, materials, supplies, maintenance, orders }:
           </table>
         </div>
         <p className="small muted" style={{ marginTop: 'var(--space-2)' }}>
-          Residual value is subtracted from the investment before amortizing
-          (all current machines: {formatMoney(0)}).
+          El valor residual se resta a la inversión antes de amortizar
+          (todas las impresoras actuales: {formatMoney(0)}).
         </p>
       </div>
 
       <div className="grid-2">
         <div className="card">
           <h3>
-            <Wrench size={16} aria-hidden="true" /> Maintenance
+            <Wrench size={16} aria-hidden="true" /> Mantenimiento
           </h3>
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>Machine</th>
-                  <th>Performed</th>
-                  <th>Description</th>
-                  <th className="num">Cost</th>
-                  <th>Next due</th>
+                  <th>Impresora</th>
+                  <th>Realizado</th>
+                  <th>Descripción</th>
+                  <th className="num">Costo</th>
+                  <th>Próximo vencimiento</th>
                 </tr>
               </thead>
               <tbody>
@@ -116,10 +116,10 @@ export function FleetTab({ machines, materials, supplies, maintenance, orders }:
                           <span className="muted">—</span>
                         ) : overdue ? (
                           <span className="badge badge-overdue">
-                            <AlertTriangle size={11} aria-hidden="true" /> Overdue since {r.nextDueAt}
+                            <AlertTriangle size={11} aria-hidden="true" /> Vencido desde {r.nextDueAt}
                           </span>
                         ) : (
-                          <span className="badge badge-ok">Due {r.nextDueAt}</span>
+                          <span className="badge badge-ok">Vence {r.nextDueAt}</span>
                         )}
                       </td>
                     </tr>
@@ -132,16 +132,16 @@ export function FleetTab({ machines, materials, supplies, maintenance, orders }:
 
         <div className="card">
           <h3>
-            <Boxes size={16} aria-hidden="true" /> Supplies &amp; stock
+            <Boxes size={16} aria-hidden="true" /> Insumos y existencias
           </h3>
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>Supply</th>
-                  <th className="num">In stock</th>
-                  <th className="num">Min.</th>
-                  <th>Status</th>
+                  <th>Insumo</th>
+                  <th className="num">En existencia</th>
+                  <th className="num">Mínimo</th>
+                  <th>Estado</th>
                 </tr>
               </thead>
               <tbody>
@@ -166,7 +166,7 @@ export function FleetTab({ machines, materials, supplies, maintenance, orders }:
                       <td>
                         {low ? (
                           <span className="badge badge-low">
-                            <AlertTriangle size={11} aria-hidden="true" /> Low stock
+                            <AlertTriangle size={11} aria-hidden="true" /> Stock bajo
                           </span>
                         ) : (
                           <span className="badge badge-ok">OK</span>
@@ -179,8 +179,8 @@ export function FleetTab({ machines, materials, supplies, maintenance, orders }:
             </table>
           </div>
           <p className="small muted" style={{ marginTop: 'var(--space-2)' }}>
-            Stock = sum of adjustments. Saving an order deducts its grams from the
-            linked material's supply automatically.
+            El stock es la suma de los ajustes. Al guardar un pedido se descuentan
+            automáticamente los gramos del insumo vinculado al material.
           </p>
         </div>
       </div>

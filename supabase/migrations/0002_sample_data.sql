@@ -1,18 +1,27 @@
 -- 0002_sample_data.sql
 -- Sprint 2: sample records matching the owner's original prototype.
--- Run this in the Supabase SQL Editor AFTER signing up and signing in
--- once (it attaches the sample data to your account via auth.uid()).
 --
---   select public.seed_sample_data();
+-- HOW TO RUN (in the Supabase SQL Editor):
+--   1. Find your user id:
+--        select id, email from auth.users;
+--   2. Seed with that id:
+--        select public.seed_sample_data('PASTE-USER-ID-HERE');
+--
+-- The user id must be passed explicitly because the SQL Editor runs as the
+-- postgres service role and has no login session, so auth.uid() is NULL there.
+-- (The parameter defaults to auth.uid(), so calling it from inside an
+-- authenticated session still works without arguments.)
 
-create or replace function public.seed_sample_data()
+create or replace function public.seed_sample_data(p_user uuid default null)
 returns void
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
-  v_user uuid := auth.uid();
+  -- Fall back to auth.uid() when called from an authenticated session;
+  -- the SQL Editor passes the id explicitly since auth.uid() is NULL there.
+  v_user uuid := coalesce(p_user, auth.uid());
   v_sup_pla_black uuid;
   v_sup_pla_white uuid;
   v_sup_petg uuid;
@@ -24,7 +33,7 @@ declare
   v_mach_ender uuid;
 begin
   if v_user is null then
-    raise exception 'Sign in before seeding sample data';
+    raise exception 'No user: pass your user id, e.g. select public.seed_sample_data(''<uuid>'')';
   end if;
 
   -- Avoid duplicating data if run twice

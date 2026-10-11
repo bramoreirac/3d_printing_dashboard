@@ -409,23 +409,6 @@ th.num {
   font-weight: 600;
 }
 
-.machine-line {
-  display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-  padding: var(--space-1) 0;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.machine-line:last-child {
-  border-bottom: none;
-}
-
-.machine-line .num-val {
-  font-family: var(--font-mono);
-  font-size: 12px;
-}
-
 .muted {
   color: var(--color-muted-foreground);
 }

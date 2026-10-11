@@ -229,38 +229,6 @@ export function OrdersTab({ orders, machines, materials, settings, onSaveOrder }
             )}
           </div>
         </form>
-
-        <div className="card">
-          <h3>Cómo se calculan los costos</h3>
-          <p className="small muted">
-            Las mismas fórmulas del prototipo original. Las tarifas vienen de la
-            configuración de cada impresora; el precio del material se guarda al
-            momento de crear el pedido.
-          </p>
-          {machine && (
-            <div>
-              <div className="machine-line">
-                <span>Amortización ({formatMoney(machine.purchasePrice)} / {machine.usefulLifeHours}h)</span>
-                <span className="num-val">{formatMoney((machine.purchasePrice - machine.residualValue) / machine.usefulLifeHours)}/h</span>
-              </div>
-              <div className="machine-line">
-                <span>Mantenimiento ({formatMoney(machine.annualMaintenanceCost)} / {machine.annualUsageHours}h)</span>
-                <span className="num-val">{formatMoney(machine.annualMaintenanceCost / machine.annualUsageHours)}/h</span>
-              </div>
-              <div className="machine-line">
-                <span>
-                  <strong>Tasa de desgaste — {machine.name}</strong>
-                </span>
-                <span className="num-val">
-                  <strong>
-                    {formatMoney((machine.purchasePrice - machine.residualValue) / machine.usefulLifeHours + machine.annualMaintenanceCost / machine.annualUsageHours)}
-                    /h
-                  </strong>
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
       </div>
 
       <div className="card">

@@ -66,7 +66,7 @@ Review: The owner can navigate both tabs and explain whether the fields fit the 
 
 Goal: Authorized users can save machines and materials securely.
 
-- [ ] Create versioned database migrations and sample records. *(files ready: `supabase/migrations/0001_init.sql`, `0002_sample_data.sql` — pending applying them to the real Supabase project)*
+- [x] Create versioned database migrations and sample records. *(applied to the Supabase project; `seed_sample_data('<user-id>')` loaded the owner's fleet, materials, supplies, and prototype orders)*
 - [ ] Add Supabase authentication and Row Level Security policies. *(implemented: sign-in screen, session handling, RLS in `0001_init.sql` — pending live verification)*
 - [x] Connect machine and material forms to the database. *(create/edit forms on the Machines tab; Supabase in cloud mode, local state in prototype mode)*
 - [ ] Test access with an unauthorized session and a separate user account.

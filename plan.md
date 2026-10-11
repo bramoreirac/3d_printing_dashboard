@@ -53,12 +53,12 @@ Defer invoicing, payments, customer portals, advanced analytics, and automated n
 
 Goal: A navigable prototype with both tabs and sample data.
 
-- Review the draft database schema (`schema.md`), built from the owner's original prototype (`tab_pedidos3d.md`, `tab_flota_uso_horas.md`) and confirmed requirements.
-- Confirm the schema and remaining open questions with the owner — done at the Sprint 1
+- [x] Review the draft database schema (`schema.md`), built from the owner's original prototype (`tab_pedidos3d.md`, `tab_flota_uso_horas.md`) and confirmed requirements.
+- [x] Confirm the schema and remaining open questions with the owner — done at the Sprint 1
   review: clients stay free text, cancelled orders count toward machine hours, and
   stock reversal on order deletion is automatic (recorded in `schema.md`).
-- Sketch the two tabs and use UI UX Pro Max in Codex to help develop the interface.
-- Initialize React/Vite and Git; build reusable forms and navigation.
+- [x] Sketch the two tabs and use UI UX Pro Max in Codex to help develop the interface.
+- [x] Initialize React/Vite and Git; build reusable forms and navigation.
 
 Review: The owner can navigate both tabs and explain whether the fields fit the business.
 
@@ -66,11 +66,11 @@ Review: The owner can navigate both tabs and explain whether the fields fit the 
 
 Goal: Authorized users can save machines and materials securely.
 
-- Create versioned database migrations and sample records.
-- Add Supabase authentication and Row Level Security policies.
-- Connect machine and material forms to the database.
-- Test access with an unauthorized session and a separate user account.
-- Keep privileged keys out of browser code and Git; browser publishable keys rely on correctly configured access policies.
+- [ ] Create versioned database migrations and sample records.
+- [ ] Add Supabase authentication and Row Level Security policies.
+- [ ] Connect machine and material forms to the database.
+- [ ] Test access with an unauthorized session and a separate user account.
+- [ ] Keep privileged keys out of browser code and Git; browser publishable keys rely on correctly configured access policies.
 
 Review: Create and edit records, reload the page, and demonstrate access restrictions.
 
@@ -78,11 +78,11 @@ Review: Create and edit records, reload the page, and demonstrate access restric
 
 Goal: Create, calculate, save, and reopen a quote.
 
-- Implement and validate cost calculations, including material, machine time, labor, and other costs.
-- Distinguish markup from margin: price = cost × (1 + markup), or price = cost / (1 - margin).
-- Use one agreed method for allocating depreciation; avoid counting it twice inside machine cost and separately.
-- Preserve quote input values or cost snapshots so later rate changes do not silently alter historical quotes.
-- Validate negative values, zero inputs, currency rounding, and a margin of 100% or higher.
+- [ ] Implement and validate cost calculations, including material, machine time, labor, and other costs.
+- [ ] Distinguish markup from margin: price = cost × (1 + markup), or price = cost / (1 - margin).
+- [ ] Use one agreed method for allocating depreciation; avoid counting it twice inside machine cost and separately.
+- [ ] Preserve quote input values or cost snapshots so later rate changes do not silently alter historical quotes.
+- [ ] Validate negative values, zero inputs, currency rounding, and a margin of 100% or higher.
 
 Review: Compare one saved quote with a manual calculation and confirm it survives reloading.
 
@@ -90,13 +90,13 @@ Review: Compare one saved quote with a manual calculation and confirm it survive
 
 Goal: A deployed MVP ready for the owner's review.
 
-- Add maintenance history and due-date indicators.
-- Add configurable depreciation estimates, stock adjustments, and low-stock indicators.
-- Check both tabs on desktop and phone; show useful loading and error states.
-- Configure deployment environment variables and authentication redirect URLs.
-- Deploy to a hosting plan that permits the intended use; use sample data for initial validation.
-- Verify permissions, calculations, and persistence on the deployed app.
-- Before relying on real records, agree on backups, export/recovery, account ownership, and operating costs.
+- [ ] Add maintenance history and due-date indicators.
+- [ ] Add configurable depreciation estimates, stock adjustments, and low-stock indicators.
+- [ ] Check both tabs on desktop and phone; show useful loading and error states.
+- [ ] Configure deployment environment variables and authentication redirect URLs.
+- [ ] Deploy to a hosting plan that permits the intended use; use sample data for initial validation.
+- [ ] Verify permissions, calculations, and persistence on the deployed app.
+- [ ] Before relying on real records, agree on backups, export/recovery, account ownership, and operating costs.
 
 Review: The owner completes a quote and updates maintenance and supplies without developer help. Record any requested changes in the backlog.
 

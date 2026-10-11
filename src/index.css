@@ -413,6 +413,92 @@ th.num {
   color: var(--color-muted-foreground);
 }
 
+/* ---- Auth ---- */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.auth-card h1 {
+  margin: 0;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.auth-card .error {
+  font-size: 13px;
+  color: var(--color-destructive);
+}
+
+.auth-card .form-actions {
+  margin-top: var(--space-1);
+}
+
+/* ---- Header sign-out ---- */
+.signout-btn {
+  margin-left: auto;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 6px;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  transition: background 150ms;
+}
+
+.signout-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.signout-btn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* ---- Icon-only buttons in tables ---- */
+.icon-btn {
+  font-family: var(--font-body);
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 150ms, color 150ms;
+}
+
+.icon-btn:hover {
+  background: var(--color-muted);
+  color: var(--color-primary);
+}
+
+.icon-btn:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 1px;
+}
+
 .small {
   font-size: 12px;
 }

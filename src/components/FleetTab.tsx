@@ -1,6 +1,15 @@
-import { AlertTriangle, Boxes, Printer, Settings, Wrench } from 'lucide-react'
+import { useState } from 'react'
+import { AlertTriangle, Boxes, Pencil, Plus, Printer, Settings, Wrench, X } from 'lucide-react'
 import type { Machine, MaintenanceRecord, Material, Order, Supply } from '../types'
 import { formatMoney } from '../lib/calc'
+import { SelectField, TextField } from './fields'
+import {
+  insertMachine,
+  insertMaterial,
+  updateMachine,
+  updateMaterial,
+  type MachineInput,
+} from '../lib/db'
 
 interface FleetTabProps {
   machines: Machine[]
@@ -8,9 +17,13 @@ interface FleetTabProps {
   supplies: Supply[]
   maintenance: MaintenanceRecord[]
   orders: Order[]
+  cloudMode: boolean
+  onMachinesChange: (machines: Machine[]) => void
+  onMaterialsChange: (materials: Material[]) => void
 }
 
 function stockQty(supply: Supply): number {
+  if (supply.stockQtyOverride !== undefined) return supply.stockQtyOverride
   return supply.adjustments.reduce((sum, a) => sum + a.delta, 0)
 }
 
@@ -28,8 +41,203 @@ const machineIcons = {
   gear: Settings,
 } as const
 
-export function FleetTab({ machines, materials, supplies, maintenance, orders }: FleetTabProps) {
+const iconOptions: { value: Machine['icon']; label: string }[] = [
+  { value: 'print', label: '🖨️ Impresora' },
+  { value: 'cube', label: '🧊 Cubo / Bambu' },
+  { value: 'cubes', label: '🧱 Sistema AMS' },
+  { value: 'gear', label: '⚙️ Industrial' },
+]
+
+interface MachineForm {
+  id: string | null
+  name: string
+  icon: Machine['icon']
+  purchasePrice: string
+  usefulLifeHours: string
+  residualValue: string
+  annualUsageHours: string
+  annualMaintenanceCost: string
+}
+
+const emptyMachineForm: MachineForm = {
+  id: null,
+  name: '',
+  icon: 'print',
+  purchasePrice: '',
+  usefulLifeHours: '',
+  residualValue: '',
+  annualUsageHours: '',
+  annualMaintenanceCost: '',
+}
+
+interface MaterialForm {
+  id: string | null
+  name: string
+  costPer1000g: string
+  minThreshold: string
+}
+
+const emptyMaterialForm: MaterialForm = { id: null, name: '', costPer1000g: '', minThreshold: '500' }
+
+export function FleetTab({
+  machines,
+  materials,
+  supplies,
+  maintenance,
+  orders,
+  cloudMode,
+  onMachinesChange,
+  onMaterialsChange,
+}: FleetTabProps) {
   const today = new Date().toISOString().slice(0, 10)
+
+  const [machineForm, setMachineForm] = useState<MachineForm>(emptyMachineForm)
+  const [materialForm, setMaterialForm] = useState<MaterialForm>(emptyMaterialForm)
+  const [machineErrors, setMachineErrors] = useState<Record<string, string>>({})
+  const [materialErrors, setMaterialErrors] = useState<Record<string, string>>({})
+  const [formError, setFormError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  function setMachine<K extends keyof MachineForm>(key: K, value: MachineForm[K]) {
+    setMachineForm((f) => ({ ...f, [key]: value }))
+  }
+
+  function setMaterial<K extends keyof MaterialForm>(key: K, value: MaterialForm[K]) {
+    setMaterialForm((f) => ({ ...f, [key]: value }))
+  }
+
+  function validateMachine(): boolean {
+    const f = machineForm
+    const next: Record<string, string> = {}
+    if (!f.name.trim()) next.name = 'Obligatorio'
+    const price = parseFloat(f.purchasePrice)
+    if (!isFinite(price) || price <= 0) next.purchasePrice = 'Debe ser mayor a 0'
+    const life = parseFloat(f.usefulLifeHours)
+    if (!isFinite(life) || life <= 0) next.usefulLifeHours = 'Debe ser mayor a 0'
+    const residual = parseFloat(f.residualValue || '0')
+    if (!isFinite(residual) || residual < 0) next.residualValue = 'Debe ser ≥ 0'
+    if (isFinite(residual) && isFinite(price) && residual > price) {
+      next.residualValue = 'No puede superar la inversión'
+    }
+    const annualHours = parseFloat(f.annualUsageHours)
+    if (!isFinite(annualHours) || annualHours <= 0) next.annualUsageHours = 'Debe ser mayor a 0'
+    const maint = parseFloat(f.annualMaintenanceCost || '0')
+    if (!isFinite(maint) || maint < 0) next.annualMaintenanceCost = 'Debe ser ≥ 0'
+    setMachineErrors(next)
+    return Object.keys(next).length === 0
+  }
+
+  function validateMaterial(): boolean {
+    const f = materialForm
+    const next: Record<string, string> = {}
+    if (!f.name.trim()) next.name = 'Obligatorio'
+    const cost = parseFloat(f.costPer1000g)
+    if (!isFinite(cost) || cost <= 0) next.costPer1000g = 'Debe ser mayor a 0'
+    if (!f.id) {
+      const threshold = parseFloat(f.minThreshold)
+      if (!isFinite(threshold) || threshold < 0) next.minThreshold = 'Debe ser ≥ 0'
+    }
+    setMaterialErrors(next)
+    return Object.keys(next).length === 0
+  }
+
+  async function handleMachineSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setFormError(null)
+    if (!validateMachine()) return
+    const input: MachineInput = {
+      name: machineForm.name.trim(),
+      icon: machineForm.icon,
+      purchasePrice: parseFloat(machineForm.purchasePrice),
+      usefulLifeHours: parseFloat(machineForm.usefulLifeHours),
+      residualValue: parseFloat(machineForm.residualValue || '0'),
+      annualUsageHours: parseFloat(machineForm.annualUsageHours),
+      annualMaintenanceCost: parseFloat(machineForm.annualMaintenanceCost || '0'),
+      isActive: true,
+    }
+    setBusy(true)
+    try {
+      if (cloudMode && machineForm.id) {
+        const current = machines.find((m) => m.id === machineForm.id)
+        const updated = await updateMachine(machineForm.id, { ...input, isActive: current?.isActive ?? true })
+        onMachinesChange(machines.map((m) => (m.id === updated.id ? updated : m)))
+      } else if (cloudMode) {
+        const created = await insertMachine(input)
+        onMachinesChange([...machines, created])
+      } else {
+        // Prototype mode: local only
+        const id = machineForm.id ?? `m-${Date.now()}`
+        const current = machines.find((m) => m.id === id)
+        const local = { ...input, id, isActive: current?.isActive ?? true }
+        onMachinesChange(
+          current ? machines.map((m) => (m.id === id ? local : m)) : [...machines, local],
+        )
+      }
+      setMachineForm(emptyMachineForm)
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Error desconocido')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleMaterialSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setFormError(null)
+    if (!validateMaterial()) return
+    const name = materialForm.name.trim()
+    const cost = parseFloat(materialForm.costPer1000g)
+    setBusy(true)
+    try {
+      if (cloudMode && materialForm.id) {
+        const updated = await updateMaterial(materialForm.id, name, cost)
+        onMaterialsChange(materials.map((m) => (m.id === updated.id ? updated : m)))
+      } else if (cloudMode) {
+        const created = await insertMaterial(name, cost, parseFloat(materialForm.minThreshold))
+        onMaterialsChange([...materials, created])
+      } else {
+        // Prototype mode: local only (supply is faked for the low-stock view)
+        const id = materialForm.id ?? `mat-${Date.now()}`
+        const current = materials.find((m) => m.id === id)
+        const local: Material = {
+          id,
+          name,
+          costPer1000g: cost,
+          supplyId: current?.supplyId ?? `sup-${Date.now()}`,
+          isActive: true,
+        }
+        onMaterialsChange(
+          current ? materials.map((m) => (m.id === id ? local : m)) : [...materials, local],
+        )
+      }
+      setMaterialForm(emptyMaterialForm)
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Error desconocido')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function editMachine(m: Machine) {
+    setFormError(null)
+    setMachineErrors({})
+    setMachineForm({
+      id: m.id,
+      name: m.name,
+      icon: m.icon,
+      purchasePrice: String(m.purchasePrice),
+      usefulLifeHours: String(m.usefulLifeHours),
+      residualValue: String(m.residualValue),
+      annualUsageHours: String(m.annualUsageHours),
+      annualMaintenanceCost: String(m.annualMaintenanceCost),
+    })
+  }
+
+  function editMaterial(m: Material) {
+    setFormError(null)
+    setMaterialErrors({})
+    setMaterialForm({ id: m.id, name: m.name, costPer1000g: String(m.costPer1000g), minThreshold: '' })
+  }
 
   return (
     <>
@@ -49,6 +257,7 @@ export function FleetTab({ machines, materials, supplies, maintenance, orders }:
                 <th className="num">Tarifa desgaste</th>
                 <th className="num">Horas usadas</th>
                 <th>Estado</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -74,6 +283,15 @@ export function FleetTab({ machines, materials, supplies, maintenance, orders }:
                         {m.isActive ? 'Activa' : 'Retirada'}
                       </span>
                     </td>
+                    <td>
+                      <button
+                        className="icon-btn"
+                        onClick={() => editMachine(m)}
+                        aria-label={`Editar ${m.name}`}
+                      >
+                        <Pencil size={14} aria-hidden="true" />
+                      </button>
+                    </td>
                   </tr>
                 )
               })}
@@ -81,9 +299,95 @@ export function FleetTab({ machines, materials, supplies, maintenance, orders }:
           </table>
         </div>
         <p className="small muted" style={{ marginTop: 'var(--space-2)' }}>
-          El valor residual se resta a la inversión antes de amortizar
-          (todas las impresoras actuales: {formatMoney(0)}).
+          El valor residual se resta a la inversión antes de amortizar.
         </p>
+      </div>
+
+      <div className="grid-2">
+        <form className="card" onSubmit={handleMachineSubmit} noValidate>
+          <h3>
+            {machineForm.id ? (
+              <>
+                <Pencil size={16} aria-hidden="true" /> Editar impresora
+              </>
+            ) : (
+              <>
+                <Plus size={16} aria-hidden="true" /> Agregar impresora
+              </>
+            )}
+          </h3>
+          <div className="form-grid">
+            <TextField label="Nombre / modelo" value={machineForm.name} onChange={(v) => setMachine('name', v)} error={machineErrors.name} placeholder="Ej. Bambu Lab H2S" />
+            <SelectField label="Ícono" value={machineForm.icon} onChange={(v) => setMachine('icon', v)} options={iconOptions} />
+            <TextField label="Inversión (USD)" type="number" step="0.01" min="0" value={machineForm.purchasePrice} onChange={(v) => setMachine('purchasePrice', v)} error={machineErrors.purchasePrice} placeholder="3000" />
+            <TextField label="Vida útil (horas)" type="number" step="0.01" min="0" value={machineForm.usefulLifeHours} onChange={(v) => setMachine('usefulLifeHours', v)} error={machineErrors.usefulLifeHours} placeholder="4500" />
+            <TextField label="Valor residual (USD)" type="number" step="0.01" min="0" value={machineForm.residualValue} onChange={(v) => setMachine('residualValue', v)} error={machineErrors.residualValue} placeholder="0" />
+            <TextField label="Uso anual (horas)" type="number" step="0.01" min="0" value={machineForm.annualUsageHours} onChange={(v) => setMachine('annualUsageHours', v)} error={machineErrors.annualUsageHours} placeholder="1500" />
+            <TextField label="Mantenimiento anual (USD)" type="number" step="0.01" min="0" value={machineForm.annualMaintenanceCost} onChange={(v) => setMachine('annualMaintenanceCost', v)} error={machineErrors.annualMaintenanceCost} placeholder="100" />
+          </div>
+          {formError && (
+            <span className="error" role="alert" style={{ display: 'block', marginTop: 'var(--space-3)' }}>
+              {formError}
+            </span>
+          )}
+          <div className="form-actions">
+            <button type="submit" className="btn" disabled={busy}>
+              <Plus size={16} aria-hidden="true" /> {machineForm.id ? 'Guardar cambios' : 'Agregar'}
+            </button>
+            {machineForm.id && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setMachineForm(emptyMachineForm)}
+              >
+                <X size={16} aria-hidden="true" /> Cancelar
+              </button>
+            )}
+          </div>
+        </form>
+
+        <form className="card" onSubmit={handleMaterialSubmit} noValidate>
+          <h3>
+            {materialForm.id ? (
+              <>
+                <Pencil size={16} aria-hidden="true" /> Editar material
+              </>
+            ) : (
+              <>
+                <Plus size={16} aria-hidden="true" /> Agregar material
+              </>
+            )}
+          </h3>
+          <div className="form-grid">
+            <TextField label="Nombre" value={materialForm.name} onChange={(v) => setMaterial('name', v)} error={materialErrors.name} placeholder="Ej. PLA Negro" />
+            <TextField label="Precio por 1000g (USD)" type="number" step="0.01" min="0" value={materialForm.costPer1000g} onChange={(v) => setMaterial('costPer1000g', v)} error={materialErrors.costPer1000g} placeholder="22.00" />
+            {!materialForm.id && (
+              <TextField label="Alerta de stock bajo (g)" type="number" step="0.01" min="0" value={materialForm.minThreshold} onChange={(v) => setMaterial('minThreshold', v)} error={materialErrors.minThreshold} placeholder="500" />
+            )}
+          </div>
+          <p className="small muted">
+            Al agregar un material se crea también su insumo para llevar las existencias.
+          </p>
+          {formError && (
+            <span className="error" role="alert" style={{ display: 'block', marginTop: 'var(--space-3)' }}>
+              {formError}
+            </span>
+          )}
+          <div className="form-actions">
+            <button type="submit" className="btn" disabled={busy}>
+              <Plus size={16} aria-hidden="true" /> {materialForm.id ? 'Guardar cambios' : 'Agregar'}
+            </button>
+            {materialForm.id && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setMaterialForm(emptyMaterialForm)}
+              >
+                <X size={16} aria-hidden="true" /> Cancelar
+              </button>
+            )}
+          </div>
+        </form>
       </div>
 
       <div className="grid-2">
@@ -155,7 +459,16 @@ export function FleetTab({ machines, materials, supplies, maintenance, orders }:
                       <td>
                         {s.name}
                         {material && (
-                          <span className="muted small"> · {formatMoney(material.costPer1000g)}/kg</span>
+                          <>
+                            <span className="muted small"> · {formatMoney(material.costPer1000g)}/kg</span>{' '}
+                            <button
+                              className="icon-btn"
+                              onClick={() => editMaterial(material)}
+                              aria-label={`Editar ${material.name}`}
+                            >
+                              <Pencil size={12} aria-hidden="true" />
+                            </button>
+                          </>
                         )}
                       </td>
                       <td className="num">

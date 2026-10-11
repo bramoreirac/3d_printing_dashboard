@@ -30,6 +30,8 @@ export interface Supply {
   unit: 'g' | 'm' | 'pcs'
   minThreshold: number
   adjustments: StockAdjustment[]
+  /** Cloud mode: stock computed by the supply_stock view (sum of adjustments). */
+  stockQtyOverride?: number
 }
 
 export interface StockAdjustment {

@@ -122,6 +122,12 @@ h1, h2, h3 {
   align-items: start;
 }
 
+/* Grid items default to min-width: auto, which lets wide tables push the
+   card beyond the container. Force shrinking so .table-wrap scrolls instead. */
+.grid-2 > * {
+  min-width: 0;
+}
+
 @media (max-width: 900px) {
   .grid-2 {
     grid-template-columns: 1fr;

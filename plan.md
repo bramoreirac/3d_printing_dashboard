@@ -54,7 +54,9 @@ Defer invoicing, payments, customer portals, advanced analytics, and automated n
 Goal: A navigable prototype with both tabs and sample data.
 
 - Review the draft database schema (`schema.md`), built from the owner's original prototype (`tab_pedidos3d.md`, `tab_flota_uso_horas.md`) and confirmed requirements.
-- Confirm the schema and remaining open questions with the owner (client records, cancelled orders, automatic stock reversal on order deletion), using the draft as the discussion checklist.
+- Confirm the schema and remaining open questions with the owner — done at the Sprint 1
+  review: clients stay free text, cancelled orders count toward machine hours, and
+  stock reversal on order deletion is automatic (recorded in `schema.md`).
 - Sketch the two tabs and use UI UX Pro Max in Codex to help develop the interface.
 - Initialize React/Vite and Git; build reusable forms and navigation.
 

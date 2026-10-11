@@ -15,6 +15,11 @@ Status: Draft for owner review. Based on the owner's original prototype
   stock adjustment for the grams used.
 - **Supplies / low stock:** wanted; kept in scope (B06, Sprint 4).
 - **Residual value:** optional field on machines; default 0.
+- **Clients are free text** on orders (no customers table for the MVP).
+- **Cancelled orders still count toward machine hours** (`hours_registered` sums
+  `print_hours` across all orders, including cancelled ones — the hours were physically used).
+- **Stock reversal on order deletion is automatic:** deleting an order writes a matching
+  positive stock adjustment to undo its deduction.
 - Straight-line depreciation, no complex asset accounting.
 - All tables are owner-only via Row Level Security; `user_id` included for future multi-user use.
 
@@ -82,7 +87,8 @@ each material is linked to a supply row that holds the stock and adjustments.
 - `amort_rate = (purchase_price − residual_value) / useful_life_hours`
 - `maint_rate = annual_maintenance_cost / annual_usage_hours`
 - `wear_rate = amort_rate + maint_rate`
-- `hours_registered` = SUM of print_hours across the machine's orders
+- `hours_registered` = SUM of print_hours across the machine's orders, **including
+  cancelled** ones (the machine time was still consumed)
 
 ### orders
 
@@ -118,10 +124,13 @@ One row per customer order (the prototype's "pedidos" history).
   `total_cost`, and `profit` are computed and stored when the order is saved, using the
   material price, machine rates, and global settings at that moment. Later price or rate
   changes never alter historical orders. The order keeps `material_id` for reference only.
-- **Automatic stock deduction:** saving an order also inserts a `stock_adjustments` row
-  on the material's linked supply: `delta = −grams`, `reason = 'order: <design_name>'`.
-  Deleting or editing the order must reverse or adjust that deduction. Stock shown in the
-  UI is always `SUM(stock_adjustments.delta)` for the supply.
+- **Automatic stock deduction and reversal:** saving an order also inserts a
+  `stock_adjustments` row on the material's linked supply: `delta = −grams`,
+  `reason = 'order: <design_name>'`. Deleting the order writes the inverse adjustment
+  (`delta = +grams`, `reason = 'order deleted: <design_name>'`) automatically; editing
+  the grams writes an adjustment for the difference. All of this happens in one
+  database transaction so orders and stock can never diverge. Stock shown in the UI
+  is always `SUM(stock_adjustments.delta)` for the supply.
 - **Payment status is derived, not stored:** `amount_paid = 0` → Pendiente;
   `0 < amount_paid < price_total` → Pago Parcial (Anticipo is just a partial payment);
   `amount_paid ≥ price_total` → Pagado. Remaining = `price_total − amount_paid`.
@@ -176,7 +185,12 @@ One row per customer order (the prototype's "pedidos" history).
 
 ## Open questions for the owner
 
-1. Is `client_name` as free text enough, or do they want a customers table later?
-2. Should cancelled orders count toward `hours_registered` per machine?
-3. When an order is deleted or its grams edited, should the stock deduction be reversed
-   automatically (recommended), or should the owner adjust stock manually?
+All resolved during the Sprint 1 review:
+
+1. ~~Is `client_name` as free text enough, or do they want a customers table later?~~
+   → Free text is enough for the MVP.
+2. ~~Should cancelled orders count toward `hours_registered` per machine?~~
+   → Yes, they count.
+3. ~~When an order is deleted or its grams edited, should the stock deduction be
+   reversed automatically?~~
+   → Yes, automatically (single transaction with the order write).

@@ -15,8 +15,9 @@ function stockQty(supply: Supply): number {
 }
 
 function hoursRegistered(machineId: string, orders: Order[]): number {
+  // Cancelled orders still count: the machine time was physically used.
   return orders
-    .filter((o) => o.machineId === machineId && o.status !== 'cancelled')
+    .filter((o) => o.machineId === machineId)
     .reduce((sum, o) => sum + o.printHours, 0)
 }
 

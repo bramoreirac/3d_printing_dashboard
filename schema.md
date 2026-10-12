@@ -180,6 +180,8 @@ One row per customer order (the prototype's "pedidos" history).
 ## RLS policy summary
 
 - Every table has RLS enabled and a `user_id` column.
+- `user_id` defaults to `auth.uid()` (migration `0004`), so client-side INSERTs
+  are stamped with their owner automatically; the seed function overrides it explicitly.
 - Policy on all tables: `user_id = auth.uid()` for SELECT/INSERT/UPDATE/DELETE.
 - No public read access anywhere; the browser only ever holds the publishable anon key.
 

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Plus, Calculator, Trash2 } from 'lucide-react'
 import type { GlobalSettings, Machine, Material, Order } from '../types'
 import {
@@ -75,6 +75,28 @@ export function OrdersTab({
   const activeMaterials = materials.filter((m) => m.isActive)
   const machine = machines.find((m) => m.id === form.machineId)
   const material = materials.find((m) => m.id === form.materialId)
+
+  // The form preselects the first machine/material on mount, when the lists
+  // may still hold prototype sample data. In cloud mode the real records
+  // replace them moments later, orphaning the preselected id — the select
+  // still displays an option (React falls back to the first one), but the
+  // lookup fails, the quote draft never forms, and the save button stays
+  // disabled with no visible reason. Re-point the selection when it goes stale.
+  useEffect(() => {
+    setForm((f) => {
+      const machineOk = machines.some((m) => m.id === f.machineId)
+      const materialOk = materials.some((m) => m.id === f.materialId)
+      if (machineOk && materialOk) return f
+      return {
+        ...f,
+        machineId: machineOk ? f.machineId : (activeMachines[0]?.id ?? ''),
+        materialId: materialOk ? f.materialId : (activeMaterials[0]?.id ?? ''),
+      }
+    })
+    // activeMachines/activeMaterials are derived from machines/materials;
+    // depending on the sources keeps the effect minimal.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [machines, materials])
 
   const draft = useMemo(() => {
     const grams = parseFloat(form.grams)
@@ -226,6 +248,13 @@ export function OrdersTab({
             <TextField label="Precio cobrado (USD)" type="number" step="0.01" min="0" value={form.priceTotal} onChange={(v) => set('priceTotal', v)} error={errors.priceTotal} placeholder="25.00" />
             <TextField label="Monto cobrado" type="number" step="0.01" min="0" value={form.amountPaid} onChange={(v) => set('amountPaid', v)} error={errors.amountPaid} placeholder="0.00" />
           </div>
+
+          {(activeMachines.length === 0 || activeMaterials.length === 0) && (
+            <p className="small muted" role="status">
+              Para guardar un pedido necesitas al menos una impresora y un material activos
+              en la pestaña «Máquinas y Materiales».
+            </p>
+          )}
 
           {draft && (
             <div className="breakdown" aria-live="polite">

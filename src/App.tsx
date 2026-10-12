@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Boxes, Calculator, LogOut } from 'lucide-react'
 import type { Session } from '@supabase/supabase-js'
-import type { Machine, Material, Order, Supply } from './types'
+import type { Machine, MaintenanceRecord, Material, Order, Supply } from './types'
 import {
   sampleMaintenance,
   sampleMaterials,
@@ -13,11 +13,15 @@ import {
 import { isCloudMode, supabase } from './lib/supabase'
 import {
   deleteOrder as dbDeleteOrder,
+  fetchMaintenance,
   fetchMaterials,
   fetchMachines,
   fetchOrders,
   fetchSuppliesWithStock,
+  insertMaintenance,
+  insertStockAdjustment,
   saveOrder,
+  type MaintenanceInput,
   type SaveOrderInput,
   type SupplyStock,
 } from './lib/db'
@@ -44,17 +48,23 @@ function toSupplies(rows: SupplyStock[]): Supply[] {
   }))
 }
 
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
 export default function App() {
   const [tab, setTab] = useState<Tab>('orders')
   const [session, setSession] = useState<Session | null>(null)
   const [authReady, setAuthReady] = useState(!isCloudMode)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [dataLoading, setDataLoading] = useState(false)
 
   // Prototype state: in-memory only when no Supabase is configured.
   const [orders, setOrders] = useState<Order[]>(sampleOrders)
   const [machines, setMachines] = useState<Machine[]>(sampleMachines)
   const [materials, setMaterials] = useState<Material[]>(sampleMaterials)
   const [supplies, setSupplies] = useState<Supply[]>(sampleSupplies)
+  const [maintenance, setMaintenance] = useState<MaintenanceRecord[]>(sampleMaintenance)
 
   // Auth session: fires on sign-in, sign-out, and token refresh.
   useEffect(() => {
@@ -74,16 +84,27 @@ export default function App() {
     if (!supabase || !session) return
     let cancelled = false
     setLoadError(null)
-    Promise.all([fetchMachines(), fetchMaterials(), fetchSuppliesWithStock(), fetchOrders()])
-      .then(([fetchedMachines, fetchedMaterials, fetchedSupplies, fetchedOrders]) => {
+    setDataLoading(true)
+    Promise.all([
+      fetchMachines(),
+      fetchMaterials(),
+      fetchSuppliesWithStock(),
+      fetchOrders(),
+      fetchMaintenance(),
+    ])
+      .then(([fetchedMachines, fetchedMaterials, fetchedSupplies, fetchedOrders, fetchedMaintenance]) => {
         if (cancelled) return
         setMachines(fetchedMachines)
         setMaterials(fetchedMaterials)
         setSupplies(toSupplies(fetchedSupplies))
         setOrders(fetchedOrders)
+        setMaintenance(fetchedMaintenance)
       })
       .catch((err: Error) => {
         if (!cancelled) setLoadError(err.message)
+      })
+      .finally(() => {
+        if (!cancelled) setDataLoading(false)
       })
     return () => {
       cancelled = true
@@ -141,6 +162,51 @@ export default function App() {
       await refreshSupplies()
     }
     setOrders((prev) => prev.filter((o) => o.id !== orderId))
+  }
+
+  /** Saves a maintenance record; cloud mode persists, prototype keeps it in memory. */
+  async function handleSaveMaintenance(input: MaintenanceInput): Promise<MaintenanceRecord> {
+    if (isCloudMode) {
+      const created = await insertMaintenance(input)
+      setMaintenance((prev) => [created, ...prev])
+      return created
+    }
+    const record: MaintenanceRecord = { id: `mnt-${Date.now()}`, ...input }
+    setMaintenance((prev) => [record, ...prev])
+    return record
+  }
+
+  /**
+   * Records a manual stock movement (a filament purchase, a correction).
+   * Cloud mode persists the adjustment and re-reads stock from the view;
+   * prototype mode appends to the supply's local adjustments.
+   */
+  async function handleStockAdjustment(
+    supplyId: string,
+    delta: number,
+    reason: string,
+  ): Promise<void> {
+    if (isCloudMode) {
+      await insertStockAdjustment(supplyId, delta, reason)
+      await refreshSupplies()
+      return
+    }
+    setSupplies((prev) =>
+      prev.map((s) =>
+        s.id === supplyId
+          ? {
+              ...s,
+              adjustments: [
+                ...s.adjustments,
+                { id: `adj-${Date.now()}`, delta, reason, createdAt: todayIso() },
+              ],
+              // Manual adjustments only exist in prototype mode's local arrays;
+              // cloud mode stock always comes from the view.
+              stockQtyOverride: undefined,
+            }
+          : s,
+      ),
+    )
   }
 
   async function handleSignOut() {
@@ -211,7 +277,13 @@ export default function App() {
           </div>
         )}
 
-        {tab === 'orders' ? (
+        {dataLoading && (
+          <div className="card" role="status">
+            Cargando datos…
+          </div>
+        )}
+
+        {!dataLoading && !loadError && tab === 'orders' ? (
           <OrdersTab
             orders={orders}
             machines={machines}
@@ -226,11 +298,13 @@ export default function App() {
             machines={machines}
             materials={materials}
             supplies={supplies}
-            maintenance={sampleMaintenance}
+            maintenance={maintenance}
             orders={orders}
             cloudMode={isCloudMode}
             onMachinesChange={setMachines}
             onMaterialsChange={setMaterials}
+            onSaveMaintenance={handleSaveMaintenance}
+            onStockAdjustment={handleStockAdjustment}
           />
         )}
       </main>

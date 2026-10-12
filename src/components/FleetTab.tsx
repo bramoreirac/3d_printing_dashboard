@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AlertTriangle, Boxes, Pencil, Plus, Printer, Settings, Wrench, X } from 'lucide-react'
 import type { Machine, MaintenanceRecord, Material, Order, Supply } from '../types'
 import { formatMoney } from '../lib/calc'
@@ -8,6 +8,7 @@ import {
   insertMaterial,
   updateMachine,
   updateMaterial,
+  type MaintenanceInput,
   type MachineInput,
 } from '../lib/db'
 
@@ -20,6 +21,8 @@ interface FleetTabProps {
   cloudMode: boolean
   onMachinesChange: (machines: Machine[]) => void
   onMaterialsChange: (materials: Material[]) => void
+  onSaveMaintenance: (input: MaintenanceInput) => Promise<MaintenanceRecord>
+  onStockAdjustment: (supplyId: string, delta: number, reason: string) => Promise<void>
 }
 
 function stockQty(supply: Supply): number {
@@ -79,6 +82,34 @@ interface MaterialForm {
 
 const emptyMaterialForm: MaterialForm = { id: null, name: '', costPer1000g: '', minThreshold: '500' }
 
+interface MaintenanceForm {
+  machineId: string
+  performedAt: string
+  description: string
+  cost: string
+  nextDueAt: string
+}
+
+function emptyMaintenanceForm(machines: Machine[]): MaintenanceForm {
+  return {
+    machineId: machines[0]?.id ?? '',
+    performedAt: new Date().toISOString().slice(0, 10),
+    description: '',
+    cost: '',
+    nextDueAt: '',
+  }
+}
+
+interface AdjustmentForm {
+  supplyId: string
+  delta: string
+  reason: string
+}
+
+function emptyAdjustmentForm(supplies: Supply[]): AdjustmentForm {
+  return { supplyId: supplies[0]?.id ?? '', delta: '', reason: '' }
+}
+
 export function FleetTab({
   machines,
   materials,
@@ -88,15 +119,39 @@ export function FleetTab({
   cloudMode,
   onMachinesChange,
   onMaterialsChange,
+  onSaveMaintenance,
+  onStockAdjustment,
 }: FleetTabProps) {
   const today = new Date().toISOString().slice(0, 10)
 
   const [machineForm, setMachineForm] = useState<MachineForm>(emptyMachineForm)
   const [materialForm, setMaterialForm] = useState<MaterialForm>(emptyMaterialForm)
+  const [maintenanceForm, setMaintenanceForm] = useState<MaintenanceForm>(() =>
+    emptyMaintenanceForm(machines),
+  )
+  const [adjustmentForm, setAdjustmentForm] = useState<AdjustmentForm>(() =>
+    emptyAdjustmentForm(supplies),
+  )
   const [machineErrors, setMachineErrors] = useState<Record<string, string>>({})
   const [materialErrors, setMaterialErrors] = useState<Record<string, string>>({})
+  const [maintenanceErrors, setMaintenanceErrors] = useState<Record<string, string>>({})
+  const [adjustmentErrors, setAdjustmentErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [adjustFlash, setAdjustFlash] = useState(false)
+
+  // Repair preselections that go stale when data loads asynchronously
+  // (sample data → fetched data), same pattern as OrdersTab.
+  useEffect(() => {
+    setMaintenanceForm((f) =>
+      machines.some((m) => m.id === f.machineId)
+        ? f
+        : { ...f, machineId: machines[0]?.id ?? '' },
+    )
+    setAdjustmentForm((f) =>
+      supplies.some((s) => s.id === f.supplyId) ? f : { ...f, supplyId: supplies[0]?.id ?? '' },
+    )
+  }, [machines, supplies])
 
   function setMachine<K extends keyof MachineForm>(key: K, value: MachineForm[K]) {
     setMachineForm((f) => ({ ...f, [key]: value }))
@@ -211,6 +266,59 @@ export function FleetTab({
         )
       }
       setMaterialForm(emptyMaterialForm)
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Error desconocido')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleMaintenanceSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setFormError(null)
+    const f = maintenanceForm
+    const next: Record<string, string> = {}
+    if (!f.machineId) next.machineId = 'Obligatorio'
+    if (!f.performedAt) next.performedAt = 'Obligatorio'
+    if (!f.description.trim()) next.description = 'Obligatorio'
+    const cost = parseFloat(f.cost || '0')
+    if (!isFinite(cost) || cost < 0) next.cost = 'Debe ser ≥ 0'
+    setMaintenanceErrors(next)
+    if (Object.keys(next).length > 0) return
+    setBusy(true)
+    try {
+      await onSaveMaintenance({
+        machineId: f.machineId,
+        performedAt: f.performedAt,
+        description: f.description.trim(),
+        cost,
+        nextDueAt: f.nextDueAt || null,
+      })
+      setMaintenanceForm(emptyMaintenanceForm(machines))
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Error desconocido')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleAdjustmentSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setFormError(null)
+    const f = adjustmentForm
+    const next: Record<string, string> = {}
+    if (!f.supplyId) next.supplyId = 'Obligatorio'
+    const delta = parseFloat(f.delta)
+    if (!isFinite(delta) || delta === 0) next.delta = 'Debe ser un número distinto de 0'
+    if (!f.reason.trim()) next.reason = 'Obligatorio'
+    setAdjustmentErrors(next)
+    if (Object.keys(next).length > 0) return
+    setBusy(true)
+    try {
+      await onStockAdjustment(f.supplyId, delta, f.reason.trim())
+      setAdjustmentForm(emptyAdjustmentForm(supplies))
+      setAdjustFlash(true)
+      setTimeout(() => setAdjustFlash(false), 2000)
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Error desconocido')
     } finally {
@@ -407,6 +515,13 @@ export function FleetTab({
                 </tr>
               </thead>
               <tbody>
+                {maintenance.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="muted">
+                      Sin registros todavía.
+                    </td>
+                  </tr>
+                )}
                 {maintenance.map((r) => {
                   const machine = machines.find((m) => m.id === r.machineId)
                   const overdue = r.nextDueAt !== null && r.nextDueAt < today
@@ -433,6 +548,60 @@ export function FleetTab({
               </tbody>
             </table>
           </div>
+          <form onSubmit={handleMaintenanceSubmit} noValidate style={{ marginTop: 'var(--space-3)' }}>
+            <h3>
+              <Plus size={16} aria-hidden="true" /> Registrar mantenimiento
+            </h3>
+            <div className="form-grid">
+              <SelectField
+                label="Impresora"
+                value={maintenanceForm.machineId}
+                onChange={(v) => setMaintenanceForm((f) => ({ ...f, machineId: v }))}
+                options={machines.map((m) => ({ value: m.id, label: m.name }))}
+                error={maintenanceErrors.machineId}
+              />
+              <TextField
+                label="Fecha realizada"
+                type="date"
+                value={maintenanceForm.performedAt}
+                onChange={(v) => setMaintenanceForm((f) => ({ ...f, performedAt: v }))}
+                error={maintenanceErrors.performedAt}
+              />
+              <TextField
+                label="Descripción"
+                value={maintenanceForm.description}
+                onChange={(v) => setMaintenanceForm((f) => ({ ...f, description: v }))}
+                error={maintenanceErrors.description}
+                placeholder="Ej. Cambio de boquilla"
+              />
+              <TextField
+                label="Costo (USD)"
+                type="number"
+                step="0.01"
+                min="0"
+                value={maintenanceForm.cost}
+                onChange={(v) => setMaintenanceForm((f) => ({ ...f, cost: v }))}
+                error={maintenanceErrors.cost}
+                placeholder="0"
+              />
+              <TextField
+                label="Próximo vencimiento (opcional)"
+                type="date"
+                value={maintenanceForm.nextDueAt}
+                onChange={(v) => setMaintenanceForm((f) => ({ ...f, nextDueAt: v }))}
+              />
+            </div>
+            {formError && (
+              <span className="error" role="alert" style={{ display: 'block', marginTop: 'var(--space-2)' }}>
+                {formError}
+              </span>
+            )}
+            <div className="form-actions">
+              <button type="submit" className="btn" disabled={busy}>
+                <Plus size={16} aria-hidden="true" /> Registrar
+              </button>
+            </div>
+          </form>
         </div>
 
         <div className="card">
@@ -496,6 +665,51 @@ export function FleetTab({
             El stock es la suma de los ajustes. Al guardar un pedido se descuentan
             automáticamente los gramos del insumo vinculado al material.
           </p>
+          <form onSubmit={handleAdjustmentSubmit} noValidate style={{ marginTop: 'var(--space-3)' }}>
+            <h3>
+              <Plus size={16} aria-hidden="true" /> Registrar movimiento
+            </h3>
+            <div className="form-grid">
+              <SelectField
+                label="Insumo"
+                value={adjustmentForm.supplyId}
+                onChange={(v) => setAdjustmentForm((f) => ({ ...f, supplyId: v }))}
+                options={supplies.map((s) => ({ value: s.id, label: s.name }))}
+                error={adjustmentErrors.supplyId}
+              />
+              <TextField
+                label="Cantidad (+ suma, − resta)"
+                type="number"
+                step="0.01"
+                value={adjustmentForm.delta}
+                onChange={(v) => setAdjustmentForm((f) => ({ ...f, delta: v }))}
+                error={adjustmentErrors.delta}
+                placeholder="Ej. 1000 o -50"
+              />
+              <TextField
+                label="Motivo"
+                value={adjustmentForm.reason}
+                onChange={(v) => setAdjustmentForm((f) => ({ ...f, reason: v }))}
+                error={adjustmentErrors.reason}
+                placeholder="Ej. Compra de rollo"
+              />
+            </div>
+            {formError && (
+              <span className="error" role="alert" style={{ display: 'block', marginTop: 'var(--space-2)' }}>
+                {formError}
+              </span>
+            )}
+            <div className="form-actions">
+              <button type="submit" className="btn" disabled={busy}>
+                <Plus size={16} aria-hidden="true" /> Registrar movimiento
+              </button>
+              {adjustFlash && (
+                <span className="small profit-positive" role="status">
+                  Movimiento registrado
+                </span>
+              )}
+            </div>
+          </form>
         </div>
       </div>
     </>

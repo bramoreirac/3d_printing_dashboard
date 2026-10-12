@@ -90,9 +90,9 @@ Review: Compare one saved quote with a manual calculation and confirm it survive
 
 Goal: A deployed MVP ready for the owner's review.
 
-- [ ] Add maintenance history and due-date indicators.
-- [ ] Add configurable depreciation estimates, stock adjustments, and low-stock indicators.
-- [ ] Check both tabs on desktop and phone; show useful loading and error states.
+- [x] Add maintenance history and due-date indicators. *(maintenance now persists: fetch from DB, registration form with date fields, overdue badges; empty-state row added)*
+- [x] Add configurable depreciation estimates, stock adjustments, and low-stock indicators. *(machine form already configurable: useful life, residual value, annual hours/cost; new manual stock-movement form — purchases and corrections — writing to `stock_adjustments`, stock refreshes from the view; low-stock badges live)*
+- [ ] Check both tabs on desktop and phone; show useful loading and error states. *(loading and error cards done; owner to verify both viewports)*
 - [ ] Configure deployment environment variables and authentication redirect URLs.
 - [ ] Deploy to a hosting plan that permits the intended use; use sample data for initial validation.
 - [ ] Verify permissions, calculations, and persistence on the deployed app.

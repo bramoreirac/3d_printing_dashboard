@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Machine, Material, Order } from '../types'
+import type { Machine, MaintenanceRecord, Material, Order } from '../types'
 
 /** Database row shapes (snake_case) mapped to app types (camelCase). */
 
@@ -143,6 +143,73 @@ export async function updateMaterial(id: string, name: string, costPer1000g: num
     .eq('id', material.supplyId)
   if (supplyError) throw new Error(`No se pudo actualizar el insumo: ${supplyError.message}`)
   return material
+}
+
+// ---- Maintenance ----
+
+interface MaintenanceRow {
+  id: string
+  machine_id: string
+  performed_at: string
+  description: string
+  cost: number
+  next_due_at: string | null
+}
+
+function toMaintenance(r: MaintenanceRow): MaintenanceRecord {
+  return {
+    id: r.id,
+    machineId: r.machine_id,
+    performedAt: r.performed_at,
+    description: r.description,
+    cost: Number(r.cost),
+    nextDueAt: r.next_due_at,
+  }
+}
+
+export async function fetchMaintenance(): Promise<MaintenanceRecord[]> {
+  const { data, error } = await supabase!
+    .from('maintenance_records')
+    .select('id, machine_id, performed_at, description, cost, next_due_at')
+    .order('performed_at', { ascending: false })
+  if (error) throw new Error(`No se pudo cargar el mantenimiento: ${error.message}`)
+  return (data as MaintenanceRow[]).map(toMaintenance)
+}
+
+export type MaintenanceInput = Omit<MaintenanceRecord, 'id'>
+
+export async function insertMaintenance(input: MaintenanceInput): Promise<MaintenanceRecord> {
+  const { data, error } = await supabase!
+    .from('maintenance_records')
+    .insert({
+      machine_id: input.machineId,
+      performed_at: input.performedAt,
+      description: input.description,
+      cost: input.cost,
+      next_due_at: input.nextDueAt,
+    })
+    .select('id, machine_id, performed_at, description, cost, next_due_at')
+    .single()
+  if (error) throw new Error(`No se pudo guardar el mantenimiento: ${error.message}`)
+  return toMaintenance(data as MaintenanceRow)
+}
+
+// ---- Manual stock adjustments (purchases, corrections) ----
+
+/**
+ * Records a stock movement on a supply (e.g. a filament purchase).
+ * Order deductions go through the create_order RPC instead — this is
+ * only for manual entries from the Supplies UI.
+ */
+export async function insertStockAdjustment(
+  supplyId: string,
+  delta: number,
+  reason: string,
+): Promise<void> {
+  const { error } = await supabase!
+    .from('stock_adjustments')
+    .insert({ supply_id: supplyId, delta, reason })
+  if (error) throw new Error(`No se pudo registrar el ajuste: ${error.message}`)
 }
 
 export interface SupplyStock {

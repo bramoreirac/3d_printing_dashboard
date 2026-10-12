@@ -31,7 +31,7 @@ interface TextFieldProps {
   label: string
   value: string
   onChange: (value: string) => void
-  type?: 'text' | 'number'
+  type?: 'text' | 'number' | 'date'
   step?: string
   min?: string
   placeholder?: string

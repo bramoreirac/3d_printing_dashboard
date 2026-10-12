@@ -35,10 +35,24 @@
 body {
   margin: 0;
   font-family: var(--font-body);
-  background: var(--color-background);
+  background-color: var(--color-background);
   color: var(--color-foreground);
   font-size: 14px;
   line-height: 1.5;
+}
+
+/* Same Unsplash photo as the login page (.auth-page), dimmed further so
+   dense tables and small text stay readable over it. Rendered as a fixed
+   pseudo-element instead of background-attachment: fixed because iOS
+   Safari handles the latter poorly on long scrolling pages. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(rgba(13, 12, 9, 0.9), rgba(13, 12, 9, 0.94)),
+    url('/auth-bg.jpg') center / cover no-repeat;
 }
 
 h1, h2, h3 {

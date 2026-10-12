@@ -154,21 +154,34 @@ export interface SupplyStock {
 }
 
 export async function fetchSuppliesWithStock(): Promise<SupplyStock[]> {
-  const { data, error } = await supabase!
-    .from('supplies')
-    .select('id, name, unit, min_threshold, supply_stock!inner(stock_qty)')
-  if (error) throw new Error(`No se pudieron cargar los insumos: ${error.message}`)
-  return (data as unknown as {
+  // Two simple queries merged client-side: the supply_stock view cannot be
+  // embedded via PostgREST (no FK relationship to supplies), so we avoid it.
+  const [suppliesRes, stockRes] = await Promise.all([
+    supabase!.from('supplies').select('id, name, unit, min_threshold').order('created_at'),
+    supabase!.from('supply_stock').select('supply_id, stock_qty'),
+  ])
+  if (suppliesRes.error) {
+    throw new Error(`No se pudieron cargar los insumos: ${suppliesRes.error.message}`)
+  }
+  if (stockRes.error) {
+    throw new Error(`No se pudo cargar el stock: ${stockRes.error.message}`)
+  }
+  const stockBySupply = new Map<string, number>(
+    ((stockRes.data ?? []) as { supply_id: string; stock_qty: number }[]).map((r) => [
+      r.supply_id,
+      Number(r.stock_qty),
+    ]),
+  )
+  return ((suppliesRes.data ?? []) as {
     id: string
     name: string
     unit: 'g' | 'm' | 'pcs'
     min_threshold: number
-    supply_stock: { stock_qty: number }[]
   }[]).map((r) => ({
     id: r.id,
     name: r.name,
     unit: r.unit,
     minThreshold: Number(r.min_threshold),
-    stockQty: Number(r.supply_stock[0]?.stock_qty ?? 0),
+    stockQty: stockBySupply.get(r.id) ?? 0,
   }))
 }

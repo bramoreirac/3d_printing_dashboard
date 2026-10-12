@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Machine, Material } from '../types'
+import type { Machine, Material, Order } from '../types'
 
 /** Database row shapes (snake_case) mapped to app types (camelCase). */
 
@@ -151,6 +151,61 @@ export interface SupplyStock {
   unit: 'g' | 'm' | 'pcs'
   minThreshold: number
   stockQty: number
+}
+
+interface OrderRow {
+  id: string
+  machine_id: string
+  material_id: string
+  client_name: string
+  design_name: string
+  order_date: string
+  grams: number
+  print_hours: number
+  labor_cost: number | null
+  price_total: number
+  amount_paid: number
+  material_price_per_1000g: number
+  material_cost: number
+  energy_cost: number
+  wear_cost: number
+  total_cost: number
+  profit: number
+  status: Order['status']
+}
+
+function toOrder(r: OrderRow): Order {
+  return {
+    id: r.id,
+    machineId: r.machine_id,
+    materialId: r.material_id,
+    clientName: r.client_name,
+    designName: r.design_name,
+    orderDate: r.order_date,
+    grams: Number(r.grams),
+    printHours: Number(r.print_hours),
+    laborCost: r.labor_cost === null ? null : Number(r.labor_cost),
+    priceTotal: Number(r.price_total),
+    amountPaid: Number(r.amount_paid),
+    materialPricePer1000g: Number(r.material_price_per_1000g),
+    materialCost: Number(r.material_cost),
+    energyCost: Number(r.energy_cost),
+    wearCost: Number(r.wear_cost),
+    totalCost: Number(r.total_cost),
+    profit: Number(r.profit),
+    status: r.status,
+  }
+}
+
+export async function fetchOrders(): Promise<Order[]> {
+  const { data, error } = await supabase!
+    .from('orders')
+    .select(
+      'id, machine_id, material_id, client_name, design_name, order_date, grams, print_hours, labor_cost, price_total, amount_paid, material_price_per_1000g, material_cost, energy_cost, wear_cost, total_cost, profit, status',
+    )
+    .order('order_date', { ascending: false })
+  if (error) throw new Error(`No se pudieron cargar los pedidos: ${error.message}`)
+  return (data as OrderRow[]).map(toOrder)
 }
 
 export async function fetchSuppliesWithStock(): Promise<SupplyStock[]> {

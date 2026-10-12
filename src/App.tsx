@@ -11,7 +11,7 @@ import {
   sampleSupplies,
 } from './data/sample'
 import { isCloudMode, supabase } from './lib/supabase'
-import { fetchMaterials, fetchMachines, fetchSuppliesWithStock } from './lib/db'
+import { fetchMaterials, fetchMachines, fetchOrders, fetchSuppliesWithStock } from './lib/db'
 import { OrdersTab } from './components/OrdersTab'
 import { FleetTab } from './components/FleetTab'
 import { SignIn } from './components/SignIn'
@@ -48,8 +48,8 @@ export default function App() {
     if (!supabase || !session) return
     let cancelled = false
     setLoadError(null)
-    Promise.all([fetchMachines(), fetchMaterials(), fetchSuppliesWithStock()])
-      .then(([fetchedMachines, fetchedMaterials, fetchedSupplies]) => {
+    Promise.all([fetchMachines(), fetchMaterials(), fetchSuppliesWithStock(), fetchOrders()])
+      .then(([fetchedMachines, fetchedMaterials, fetchedSupplies, fetchedOrders]) => {
         if (cancelled) return
         setMachines(fetchedMachines)
         setMaterials(fetchedMaterials)
@@ -65,7 +65,7 @@ export default function App() {
             stockQtyOverride: s.stockQty,
           })) as Supply[],
         )
-        setOrders([]) // orders arrive in Sprint 3
+        setOrders(fetchedOrders)
       })
       .catch((err: Error) => {
         if (!cancelled) setLoadError(err.message)

@@ -201,27 +201,6 @@ export function OrdersTab({
 
   return (
     <>
-      <div className="kpi-row">
-        <div className="kpi">
-          <div className="kpi-label">Pedidos</div>
-          <div className="kpi-value">{openOrders.length}</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi-label">Total cotizado</div>
-          <div className="kpi-value">{formatMoney(totals.revenue)}</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi-label">Cobrado</div>
-          <div className="kpi-value">{formatMoney(paid)}</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi-label">Ganancia estimada</div>
-          <div className={`kpi-value ${totals.profit >= 0 ? 'profit-positive' : 'profit-negative'}`}>
-            {formatMoney(totals.profit)}
-          </div>
-        </div>
-      </div>
-
       <div className="grid-2">
         <form className="card" onSubmit={handleSubmit} noValidate>
           <h3>
@@ -354,6 +333,27 @@ export function OrdersTab({
             )}
           </div>
         </form>
+
+        <div className="kpi-stack" role="group" aria-label="Resumen de pedidos">
+          <div className="kpi">
+            <div className="kpi-label">Pedidos</div>
+            <div className="kpi-value">{openOrders.length}</div>
+          </div>
+          <div className="kpi">
+            <div className="kpi-label">Total cotizado</div>
+            <div className="kpi-value">{formatMoney(totals.revenue)}</div>
+          </div>
+          <div className="kpi">
+            <div className="kpi-label">Cobrado</div>
+            <div className="kpi-value">{formatMoney(paid)}</div>
+          </div>
+          <div className="kpi">
+            <div className="kpi-label">Ganancia estimada</div>
+            <div className={`kpi-value ${totals.profit >= 0 ? 'profit-positive' : 'profit-negative'}`}>
+              {formatMoney(totals.profit)}
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="card">

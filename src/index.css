@@ -378,10 +378,12 @@ th.num {
 }
 
 /* ---- KPI cards ---- */
-.kpi-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+/* Vertical stack for the summary beside the quote form. */
+.kpi-stack {
+  display: flex;
+  flex-direction: column;
   gap: var(--space-3);
+  align-self: start;
 }
 
 .kpi {

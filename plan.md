@@ -67,9 +67,9 @@ Review: The owner can navigate both tabs and explain whether the fields fit the 
 Goal: Authorized users can save machines and materials securely.
 
 - [x] Create versioned database migrations and sample records. *(applied to the Supabase project; `seed_sample_data('<user-id>')` loaded the owner's fleet, materials, supplies, and prototype orders)*
-- [ ] Add Supabase authentication and Row Level Security policies. *(implemented: sign-in screen, session handling, RLS in `0001_init.sql` — pending live verification)*
+- [x] Add Supabase authentication and Row Level Security policies. *(sign-in + sign-up with email/password; magic link removed after it created passwordless zombie accounts; RLS verified with a second account seeing zero rows)*
 - [x] Connect machine and material forms to the database. *(create/edit forms on the Machines tab; Supabase in cloud mode, local state in prototype mode)*
-- [ ] Test access with an unauthorized session and a separate user account.
+- [x] Test access with an unauthorized session and a separate user account. *(private window: login screen only, no data reachable; second self-registered account: empty dashboard, HTTP 200 with [] — RLS isolates owners correctly)*
 - [x] Keep privileged keys out of browser code and Git; browser publishable keys rely on correctly configured access policies. *(only the publishable anon key is used; `.env` is gitignored, `.env.example` documents the setup)*
 
 Review: Create and edit records, reload the page, and demonstrate access restrictions.

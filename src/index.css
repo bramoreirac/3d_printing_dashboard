@@ -3,18 +3,19 @@
 :root {
   color-scheme: dark;
 
-  --color-primary: #2563eb;
-  --color-on-primary: #ffffff;
-  --color-secondary: #60a5fa;
+  --color-primary: #eab308;
+  --color-on-primary: #16120a;
+  --color-secondary: #fde047;
   --color-accent: #f59e0b;
-  --color-background: #0b1220;
-  --color-foreground: #e2e8f0;
-  --color-card: #111a2e;
-  --color-muted: #1c2942;
-  --color-muted-foreground: #94a3b8;
-  --color-border: #24334f;
+  --color-background: #0d0c09;
+  --color-foreground: #f4efe2;
+  --color-card: #17150f;
+  --color-muted: #262216;
+  --color-muted-foreground: #aca490;
+  --color-border: #38331f;
   --color-destructive: #f87171;
-  --color-ring: #60a5fa;
+  --color-ring: #facc15;
+  --color-header: #12100a;
 
   --font-body: 'Fira Sans', system-ui, sans-serif;
   --font-mono: 'Fira Code', ui-monospace, monospace;
@@ -47,8 +48,9 @@ h1, h2, h3 {
 
 /* ---- Layout ---- */
 .app-header {
-  background: var(--color-primary);
-  color: var(--color-on-primary);
+  background: var(--color-header);
+  color: var(--color-foreground);
+  border-bottom: 1px solid var(--color-border);
   padding: var(--space-3) var(--space-6);
   display: flex;
   align-items: center;
@@ -75,7 +77,7 @@ h1, h2, h3 {
   border: 1px solid transparent;
   border-radius: 6px;
   background: transparent;
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--color-muted-foreground);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -84,17 +86,17 @@ h1, h2, h3 {
 }
 
 .tab-nav button:hover {
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
+  background: var(--color-muted);
+  color: var(--color-foreground);
 }
 
 .tab-nav button[aria-selected='true'] {
-  background: var(--color-on-primary);
-  color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
 }
 
 .tab-nav button:focus-visible {
-  outline: 2px solid #fff;
+  outline: 2px solid var(--color-ring);
   outline-offset: 2px;
 }
 
@@ -349,8 +351,8 @@ th.num {
 }
 
 .badge-ok {
-  background: rgba(96, 165, 250, 0.15);
-  color: #93c5fd;
+  background: rgba(234, 179, 8, 0.15);
+  color: #fde047;
 }
 
 .badge-overdue {
@@ -470,7 +472,7 @@ th.num {
      under the Unsplash License: https://unsplash.com/photos/RCAhiGJsUUE
      Dark gradient overlay keeps the dark card and text readable on any crop. */
   background:
-    linear-gradient(rgba(11, 18, 32, 0.72), rgba(11, 18, 32, 0.88)),
+    linear-gradient(rgba(13, 12, 9, 0.72), rgba(13, 12, 9, 0.88)),
     url('/auth-bg.jpg') center / cover no-repeat fixed;
 }
 
@@ -533,23 +535,24 @@ th.num {
   font-size: 13px;
   font-weight: 500;
   padding: var(--space-2) var(--space-3);
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   background: transparent;
-  color: #fff;
+  color: var(--color-muted-foreground);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  transition: background 150ms;
+  transition: background 150ms, color 150ms;
 }
 
 .signout-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--color-muted);
+  color: var(--color-foreground);
 }
 
 .signout-btn:focus-visible {
-  outline: 2px solid #fff;
+  outline: 2px solid var(--color-ring);
   outline-offset: 2px;
 }
 

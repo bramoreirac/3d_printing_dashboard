@@ -378,12 +378,21 @@ th.num {
 }
 
 /* ---- KPI cards ---- */
-/* Vertical stack for the summary beside the quote form. */
+/* Vertical stack for the summary beside the quote form. Cards stretch to
+   match the form card's height (flex:1 shares the space equally), so both
+   columns of .grid-2 end on the same bottom line. */
 .kpi-stack {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  align-self: start;
+  align-self: stretch;
+}
+
+.kpi-stack .kpi {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .kpi {

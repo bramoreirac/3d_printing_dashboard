@@ -182,10 +182,15 @@ export default function App() {
             </button>
           ))}
         </nav>
-        {isCloudMode && (
-          <button className="signout-btn" onClick={handleSignOut} title="Cerrar sesión">
-            <LogOut size={15} aria-hidden="true" /> Salir
-          </button>
+        {isCloudMode && session && (
+          <div className="header-account">
+            <span className="session-user" title={session.user.email}>
+              Conectado como {session.user.email}
+            </span>
+            <button className="signout-btn" onClick={handleSignOut} title="Cerrar sesión">
+              <LogOut size={15} aria-hidden="true" /> Salir
+            </button>
+          </div>
         )}
       </header>
 

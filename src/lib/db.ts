@@ -208,6 +208,47 @@ export async function fetchOrders(): Promise<Order[]> {
   return (data as OrderRow[]).map(toOrder)
 }
 
+export interface SaveOrderInput {
+  machineId: string
+  materialId: string
+  clientName: string
+  designName: string
+  grams: number
+  printHours: number
+  laborCost: number | null
+  priceTotal: number
+  amountPaid: number
+}
+
+/**
+ * Saves an order through the SECURITY DEFINER RPC: the server recomputes
+ * the cost breakdown (never trusts client numbers), snapshots it onto the
+ * row, and writes the -grams stock adjustment — all in one transaction.
+ */
+export async function saveOrder(input: SaveOrderInput): Promise<Order> {
+  const { data, error } = await supabase!.rpc('create_order_with_stock_deduction', {
+    p_machine_id: input.machineId,
+    p_material_id: input.materialId,
+    p_client_name: input.clientName,
+    p_design_name: input.designName,
+    p_grams: input.grams,
+    p_print_hours: input.printHours,
+    p_labor_cost: input.laborCost,
+    p_price_total: input.priceTotal,
+    p_amount_paid: input.amountPaid,
+  })
+  if (error) throw new Error(`No se pudo guardar el pedido: ${error.message}`)
+  return toOrder(data as OrderRow)
+}
+
+/** Deletes an order; the RPC reverses its stock deduction in the same transaction. */
+export async function deleteOrder(orderId: string): Promise<void> {
+  const { error } = await supabase!.rpc('delete_order_with_stock_reversal', {
+    p_order_id: orderId,
+  })
+  if (error) throw new Error(`No se pudo eliminar el pedido: ${error.message}`)
+}
+
 export async function fetchSuppliesWithStock(): Promise<SupplyStock[]> {
   // Two simple queries merged client-side: the supply_stock view cannot be
   // embedded via PostgREST (no FK relationship to supplies), so we avoid it.

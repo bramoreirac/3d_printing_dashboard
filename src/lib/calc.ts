@@ -57,6 +57,21 @@ export function calculateQuote(
   return { materialCost, energyCost, wearCost, laborCost, totalCost, profit, marginPct }
 }
 
+export type PricingMode = 'markup' | 'margin'
+
+/**
+ * Suggested price from the cost and a target pricing percentage:
+ *   markup: price = cost × (1 + pct/100)   — pct over cost (60% markup on $10 → $16)
+ *   margin: price = cost / (1 − pct/100)   — pct of the price kept as profit
+ * A margin of 100% or higher is mathematically impossible (division by zero
+ * or negative price), so it returns null and the UI must reject it.
+ */
+export function suggestedPrice(cost: number, mode: PricingMode, pct: number): number | null {
+  if (mode === 'markup') return cost * (1 + pct / 100)
+  if (pct >= 100) return null
+  return cost / (1 - pct / 100)
+}
+
 /** Payment status derived from amount paid vs. total price (never stored). */
 export function paymentStatus(priceTotal: number, amountPaid: number): PaymentStatus {
   if (amountPaid <= 0) return 'Pendiente'

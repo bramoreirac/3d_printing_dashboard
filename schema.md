@@ -177,6 +177,25 @@ One row per customer order (the prototype's "pedidos" history).
 | reason | text | e.g. "purchase", "order: Organizador de Escritorio" |
 | created_at | timestamptz default now() | |
 
+## Server-side order writes (migration `0005`)
+
+Orders are never inserted with a plain client `INSERT`. Two SECURITY DEFINER
+functions own all order writes so the cost snapshot, the order row, and the
+stock adjustment can never diverge:
+
+- `create_order_with_stock_deduction(machine_id, material_id, client, design,
+  grams, hours, labor?, price, paid?)` → recomputes the breakdown server-side
+  from current machine/material/settings rows (never trusts client numbers),
+  snapshots it onto the order, derives `status` from `paid ≥ price`, writes the
+  `−grams` stock adjustment, and returns the created row as JSON.
+- `delete_order_with_stock_reversal(order_id)` → writes the inverse `+grams`
+  adjustment and deletes the order in the same transaction.
+
+Both check `user_id = auth.uid()` on every referenced row (SECURITY DEFINER
+bypasses RLS internally, so ownership is validated explicitly), reject
+non-positive grams/hours/price and negative payments, and are executable only
+by the `authenticated` role.
+
 ## RLS policy summary
 
 - Every table has RLS enabled and a `user_id` column.

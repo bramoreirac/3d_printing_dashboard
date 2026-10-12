@@ -11,12 +11,38 @@ import {
   sampleSupplies,
 } from './data/sample'
 import { isCloudMode, supabase } from './lib/supabase'
-import { fetchMaterials, fetchMachines, fetchOrders, fetchSuppliesWithStock } from './lib/db'
+import {
+  deleteOrder as dbDeleteOrder,
+  fetchMaterials,
+  fetchMachines,
+  fetchOrders,
+  fetchSuppliesWithStock,
+  saveOrder,
+  type SaveOrderInput,
+  type SupplyStock,
+} from './lib/db'
+import { calculateQuote, money } from './lib/calc'
 import { OrdersTab } from './components/OrdersTab'
 import { FleetTab } from './components/FleetTab'
 import { SignIn } from './components/SignIn'
 
 type Tab = 'orders' | 'fleet'
+
+/**
+ * Maps rows from the supply_stock view to the Supply shape. Stock comes
+ * pre-computed (sum of adjustments); the adjustments array is kept empty
+ * to avoid double counting in the UI.
+ */
+function toSupplies(rows: SupplyStock[]): Supply[] {
+  return rows.map((s) => ({
+    id: s.id,
+    name: s.name,
+    unit: s.unit,
+    minThreshold: s.minThreshold,
+    adjustments: [],
+    stockQtyOverride: s.stockQty,
+  }))
+}
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('orders')
@@ -53,18 +79,7 @@ export default function App() {
         if (cancelled) return
         setMachines(fetchedMachines)
         setMaterials(fetchedMaterials)
-        setSupplies(
-          fetchedSupplies.map((s) => ({
-            id: s.id,
-            name: s.name,
-            unit: s.unit,
-            minThreshold: s.minThreshold,
-            // Stock comes from the supply_stock view (sum of adjustments);
-            // the adjustments array is kept empty to avoid double counting.
-            adjustments: [],
-            stockQtyOverride: s.stockQty,
-          })) as Supply[],
-        )
+        setSupplies(toSupplies(fetchedSupplies))
         setOrders(fetchedOrders)
       })
       .catch((err: Error) => {
@@ -74,6 +89,59 @@ export default function App() {
       cancelled = true
     }
   }, [session])
+
+  // Orders change stock (deduction on save, reversal on delete): refresh so
+  // the Supplies tab stays accurate without a manual reload.
+  async function refreshSupplies() {
+    const fetched = await fetchSuppliesWithStock()
+    setSupplies(toSupplies(fetched))
+  }
+
+  /**
+   * Saves a quote. Cloud mode calls the SECURITY DEFINER RPC, which recomputes
+   * costs server-side, snapshots them, and deducts stock in one transaction.
+   * Prototype mode reproduces the same math locally and keeps it in memory.
+   */
+  async function handleSaveOrder(input: SaveOrderInput): Promise<Order> {
+    if (isCloudMode) {
+      const created = await saveOrder(input)
+      setOrders((prev) => [created, ...prev])
+      await refreshSupplies()
+      return created
+    }
+    const machine = machines.find((m) => m.id === input.machineId)
+    const material = materials.find((m) => m.id === input.materialId)
+    if (!machine || !material) throw new Error('Impresora o material no encontrado')
+    const draft = calculateQuote(machine, material.costPer1000g, sampleSettings, {
+      grams: input.grams,
+      printHours: input.printHours,
+      laborCost: input.laborCost,
+      priceTotal: input.priceTotal,
+    })
+    const order: Order = {
+      id: `o-${Date.now()}`,
+      ...input,
+      orderDate: new Date().toISOString().slice(0, 10),
+      materialPricePer1000g: material.costPer1000g,
+      materialCost: money(draft.materialCost),
+      energyCost: money(draft.energyCost),
+      wearCost: money(draft.wearCost),
+      totalCost: money(draft.totalCost),
+      profit: money(draft.profit),
+      status: input.amountPaid >= input.priceTotal ? 'completed' : 'open',
+    }
+    setOrders((prev) => [order, ...prev])
+    return order
+  }
+
+  /** Deleting an order in cloud mode reverses its stock deduction (same transaction). */
+  async function handleDeleteOrder(orderId: string): Promise<void> {
+    if (isCloudMode) {
+      await dbDeleteOrder(orderId)
+      await refreshSupplies()
+    }
+    setOrders((prev) => prev.filter((o) => o.id !== orderId))
+  }
 
   async function handleSignOut() {
     await supabase?.auth.signOut()
@@ -144,7 +212,9 @@ export default function App() {
             machines={machines}
             materials={materials}
             settings={sampleSettings}
-            onSaveOrder={(order) => setOrders((prev) => [order, ...prev])}
+            cloudMode={isCloudMode}
+            onSaveOrder={handleSaveOrder}
+            onDeleteOrder={handleDeleteOrder}
           />
         ) : (
           <FleetTab

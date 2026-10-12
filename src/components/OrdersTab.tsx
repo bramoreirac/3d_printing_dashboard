@@ -1,7 +1,15 @@
 import { useMemo, useState } from 'react'
-import { Plus, Calculator } from 'lucide-react'
+import { Plus, Calculator, Trash2 } from 'lucide-react'
 import type { GlobalSettings, Machine, Material, Order } from '../types'
-import { calculateQuote, formatMoney, money, paymentStatus } from '../lib/calc'
+import {
+  calculateQuote,
+  formatMoney,
+  money,
+  paymentStatus,
+  suggestedPrice,
+  type PricingMode,
+} from '../lib/calc'
+import type { SaveOrderInput } from '../lib/db'
 import { SelectField, TextField } from './fields'
 import { PaymentBadge } from './PaymentBadge'
 
@@ -10,7 +18,9 @@ interface OrdersTabProps {
   machines: Machine[]
   materials: Material[]
   settings: GlobalSettings
-  onSaveOrder: (order: Order) => void
+  cloudMode: boolean
+  onSaveOrder: (input: SaveOrderInput) => Promise<Order>
+  onDeleteOrder: (orderId: string) => Promise<void>
 }
 
 interface FormState {
@@ -43,10 +53,23 @@ const laborInvalid = 'Debe ser ≥ 0 (o dejar vacío)'
 const paidInvalid = 'Debe ser ≥ 0'
 const paidTooHigh = 'No puede superar el precio'
 
-export function OrdersTab({ orders, machines, materials, settings, onSaveOrder }: OrdersTabProps) {
+export function OrdersTab({
+  orders,
+  machines,
+  materials,
+  settings,
+  cloudMode,
+  onSaveOrder,
+  onDeleteOrder,
+}: OrdersTabProps) {
   const [form, setForm] = useState<FormState>(() => emptyForm(machines, materials))
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [savedFlash, setSavedFlash] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  // Markup/margin helper: the owner types a percentage, gets a suggested price.
+  const [pricingMode, setPricingMode] = useState<PricingMode>('markup')
+  const [pricingPct, setPricingPct] = useState('')
 
   const activeMachines = machines.filter((m) => m.isActive)
   const activeMaterials = materials.filter((m) => m.isActive)
@@ -73,6 +96,13 @@ export function OrdersTab({ orders, machines, materials, settings, onSaveOrder }
     setForm((f) => ({ ...f, [key]: value }))
   }
 
+  // Suggested price from the current cost breakdown and the chosen markup/margin.
+  const pricingPctNum = parseFloat(pricingPct)
+  const suggestion = useMemo(() => {
+    if (!draft || !isFinite(pricingPctNum) || pricingPctNum < 0) return null
+    return suggestedPrice(draft.totalCost, pricingMode, pricingPctNum)
+  }, [draft, pricingMode, pricingPctNum])
+
   function validate(): boolean {
     const next: Record<string, string> = {}
     if (!form.clientName.trim()) next.clientName = required
@@ -94,35 +124,50 @@ export function OrdersTab({ orders, machines, materials, settings, onSaveOrder }
     return Object.keys(next).length === 0
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!validate() || !draft || !machine || !material) return
+    if (!validate() || !machine || !material || saving) return
     const laborRaw = form.laborCost.trim()
-    const order: Order = {
-      id: `o-${Date.now()}`,
+    const input: SaveOrderInput = {
       machineId: machine.id,
       materialId: material.id,
       clientName: form.clientName.trim(),
       designName: form.designName.trim(),
-      orderDate: new Date().toISOString().slice(0, 10),
       grams: money(parseFloat(form.grams)),
       printHours: money(parseFloat(form.printHours)),
       laborCost: laborRaw === '' ? null : money(parseFloat(laborRaw)),
       priceTotal: money(parseFloat(form.priceTotal)),
       amountPaid: money(parseFloat(form.amountPaid)),
-      materialPricePer1000g: material.costPer1000g,
-      materialCost: money(draft.materialCost),
-      energyCost: money(draft.energyCost),
-      wearCost: money(draft.wearCost),
-      totalCost: money(draft.totalCost),
-      profit: money(draft.profit),
-      status: parseFloat(form.amountPaid) >= parseFloat(form.priceTotal) ? 'completed' : 'open',
     }
-    onSaveOrder(order)
-    setForm(emptyForm(machines, materials))
-    setErrors({})
-    setSavedFlash(true)
-    setTimeout(() => setSavedFlash(false), 2000)
+    setSaving(true)
+    setSaveError(null)
+    try {
+      await onSaveOrder(input)
+      setForm(emptyForm(machines, materials))
+      setErrors({})
+      setSavedFlash(true)
+      setTimeout(() => setSavedFlash(false), 2000)
+    } catch (err) {
+      setSaveError((err as Error).message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete(order: Order) {
+    if (!window.confirm(`¿Eliminar el pedido de ${order.clientName}? Se devolverá el stock consumido.`))
+      return
+    setSaveError(null)
+    try {
+      await onDeleteOrder(order.id)
+    } catch (err) {
+      setSaveError((err as Error).message)
+    }
+  }
+
+  function applySuggestion() {
+    if (suggestion === null) return
+    set('priceTotal', String(money(suggestion)))
   }
 
   const openOrders = orders.filter((o) => o.status !== 'cancelled')
@@ -218,13 +263,64 @@ export function OrdersTab({ orders, machines, materials, settings, onSaveOrder }
             </div>
           )}
 
+          {draft && (
+            <div className="pricing-helper" role="group" aria-label="Sugerir precio con markup o margen">
+              <SelectField<PricingMode>
+                label="Cálculo de precio"
+                value={pricingMode}
+                onChange={setPricingMode}
+                options={[
+                  { value: 'markup', label: 'Markup (sobre el costo)' },
+                  { value: 'margin', label: 'Margen (sobre el precio)' },
+                ]}
+              />
+              <TextField
+                label="Porcentaje (%)"
+                type="number"
+                step="0.1"
+                min="0"
+                value={pricingPct}
+                onChange={setPricingPct}
+                placeholder="Ej. 60"
+              />
+              <div className="field pricing-result">
+                <span className="small muted">Precio sugerido</span>
+                <strong>
+                  {suggestion !== null && pricingPct.trim() !== ''
+                    ? formatMoney(money(suggestion))
+                    : '—'}
+                </strong>
+                {pricingMode === 'margin' && isFinite(pricingPctNum) && pricingPctNum >= 100 && (
+                  <span className="small error" role="alert">
+                    El margen debe ser menor a 100%
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={applySuggestion}
+                disabled={suggestion === null}
+              >
+                Usar precio sugerido
+              </button>
+            </div>
+          )}
+
           <div className="form-actions">
-            <button type="submit" className="btn" disabled={!draft}>
-              <Plus size={16} aria-hidden="true" /> Guardar pedido
+            <button type="submit" className="btn" disabled={!draft || saving}>
+              <Plus size={16} aria-hidden="true" /> {saving ? 'Guardando…' : 'Guardar pedido'}
             </button>
             {savedFlash && (
               <span className="small profit-positive" role="status">
-                Pedido guardado (prototipo — solo en memoria)
+                {cloudMode
+                  ? 'Pedido guardado — stock descontado'
+                  : 'Pedido guardado (prototipo — solo en memoria)'}
+              </span>
+            )}
+            {saveError && (
+              <span className="small error" role="alert">
+                {saveError}
               </span>
             )}
           </div>
@@ -248,6 +344,9 @@ export function OrdersTab({ orders, machines, materials, settings, onSaveOrder }
                 <th className="num">Cobrado</th>
                 <th className="num">Ganancia</th>
                 <th>Pago</th>
+                <th>
+                  <span className="sr-only">Acciones</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -269,6 +368,16 @@ export function OrdersTab({ orders, machines, materials, settings, onSaveOrder }
                     </td>
                     <td>
                       <PaymentBadge status={paymentStatus(o.priceTotal, o.amountPaid)} />
+                    </td>
+                    <td>
+                      <button
+                        className="icon-btn"
+                        onClick={() => handleDelete(o)}
+                        title="Eliminar pedido"
+                        aria-label={`Eliminar pedido de ${o.clientName}`}
+                      >
+                        <Trash2 size={14} aria-hidden="true" />
+                      </button>
                     </td>
                   </tr>
                 )

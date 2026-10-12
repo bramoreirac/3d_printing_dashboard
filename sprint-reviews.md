@@ -70,3 +70,43 @@ first failure. Process change for Sprint 3: run every query against Supabase
 visibly distinct from cloud data.
 
 **Next sprint goal:** Create, calculate, save, and reopen a quote.
+
+---
+
+## Sprint 3 — October 2026
+
+**Goal:** Create, calculate, save, and reopen a quote.
+
+**Completed backlog IDs:** B03 (quote calculation with markup/margin), B04
+(save and reopen quotes with cost snapshots).
+
+**Demonstrated result:** Owner created a quote through the form, saved it to
+Supabase, reloaded the page, and confirmed the breakdown survived unchanged
+against the hand calculation; the linked supply's stock dropped by the grams
+used in the same transaction. Deleting an order reverses the stock
+automatically. The markup/margin helper suggests a price from the live cost.
+
+**Owner feedback:**
+- The save button stayed disabled with every field filled → root cause was an
+  orphaned machine/material preselection from prototype sample data; fixed
+  with a repair effect (`435c03d`) plus a hint for the legitimate empty case.
+- UI polish requests delivered alongside the feature: dark mode, recolor
+  blue→yellow on warm-dark surfaces, sand-wave photo background on login and
+  dashboard (downloaded locally, Unsplash License), full-width auth submit,
+  signed-in email in the header, center-anchored tab group.
+
+**Unfinished items and reason:** None for the sprint goal. Noted for the
+backlog: editing an existing order's grams (schema decision: writes a stock
+adjustment for the difference) — only create/delete are wired so far.
+
+**What worked:** The server-recompute RPC design made persistence one
+transaction that cannot diverge; the save/reload review test passed as soon
+as migration `0005` was applied. Splitting UI polish into its own commits
+kept the history readable alongside feature work.
+
+**What to improve:** The disabled-button bug revealed a pattern: state
+initialized from data that gets replaced asynchronously (sample → fetched)
+silently orphans selections. Process change: initialize async-loaded lists
+empty and wait, or repair stale ids — and make disabled controls say *why*.
+
+**Next sprint goal:** A deployed MVP ready for the owner's review.

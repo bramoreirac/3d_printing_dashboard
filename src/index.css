@@ -51,7 +51,7 @@ body::before {
   inset: 0;
   z-index: -1;
   background:
-    linear-gradient(rgba(13, 12, 9, 0.9), rgba(13, 12, 9, 0.94)),
+    linear-gradient(rgba(13, 12, 9, 0.5), rgba(13, 12, 9, 0.94)),
     url('/auth-bg.jpg') center / cover no-repeat;
 }
 

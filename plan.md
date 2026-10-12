@@ -78,13 +78,13 @@ Review: Create and edit records, reload the page, and demonstrate access restric
 
 Goal: Create, calculate, save, and reopen a quote.
 
-- [ ] Implement and validate cost calculations, including material, machine time, labor, and other costs.
-- [ ] Distinguish markup from margin: price = cost × (1 + markup), or price = cost / (1 - margin).
-- [ ] Use one agreed method for allocating depreciation; avoid counting it twice inside machine cost and separately.
-- [ ] Preserve quote input values or cost snapshots so later rate changes do not silently alter historical quotes.
-- [ ] Validate negative values, zero inputs, currency rounding, and a margin of 100% or higher.
+- [x] Implement and validate cost calculations, including material, machine time, labor, and other costs. *(`calc.ts` verified against the owner's hand calculation; the same formulas duplicated server-side in the `0005` RPC, which recomputes from DB state and never trusts client numbers)*
+- [x] Distinguish markup from margin: price = cost × (1 + markup), or price = cost / (1 - margin). *(`suggestedPrice` helper + "Cálculo de precio" widget in the quote form with live suggested price)*
+- [x] Use one agreed method for allocating depreciation; avoid counting it twice inside machine cost and separately. *(straight-line amortization + maintenance rate folded into the hourly wear rate only; documented in `schema.md`; no separate depreciation charge)*
+- [x] Preserve quote input values or cost snapshots so later rate changes do not silently alter historical quotes. *(RPC snapshots material price and the full cost breakdown onto the order row at save time)*
+- [x] Validate negative values, zero inputs, currency rounding, and a margin of 100% or higher. *(form validations + server-side checks in the RPC; markup/margin helper rejects a margin ≥ 100%)*
 
-Review: Compare one saved quote with a manual calculation and confirm it survives reloading.
+Review: Compare one saved quote with a manual calculation and confirm it survives reloading. *(done: owner's save/reload test passed with migration `0005` applied; stock deduction verified)*
 
 ## Sprint 4 — Complete operations and deployment
 

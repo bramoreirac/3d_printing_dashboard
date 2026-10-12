@@ -465,6 +465,13 @@ th.num {
   align-items: center;
   justify-content: center;
   padding: var(--space-4);
+  /* Photo: "Grey Sand Wave" (Unsplash, photo ID RCAhiGJsUUE), downloaded
+     locally so the app doesn't depend on Unsplash at runtime. Free to use
+     under the Unsplash License: https://unsplash.com/photos/RCAhiGJsUUE
+     Dark gradient overlay keeps the dark card and text readable on any crop. */
+  background:
+    linear-gradient(rgba(11, 18, 32, 0.72), rgba(11, 18, 32, 0.88)),
+    url('/auth-bg.jpg') center / cover no-repeat fixed;
 }
 
 .auth-card {

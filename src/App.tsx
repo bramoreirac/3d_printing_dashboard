@@ -12,7 +12,10 @@ import {
 } from './data/sample'
 import { isCloudMode, supabase } from './lib/supabase'
 import {
+  deleteMachine as dbDeleteMachine,
+  deleteMaintenanceRecord as dbDeleteMaintenanceRecord,
   deleteOrder as dbDeleteOrder,
+  deleteSupply as dbDeleteSupply,
   fetchMaintenance,
   fetchMaterials,
   fetchMachines,
@@ -211,6 +214,45 @@ export default function App() {
     )
   }
 
+  /**
+   * Deletes a machine; cloud mode runs the RPC that removes its maintenance
+   * records too (blocked when orders reference it — the same guard runs here
+   * first so prototype mode behaves identically).
+   */
+  async function handleDeleteMachine(machineId: string): Promise<void> {
+    if (orders.some((o) => o.machineId === machineId)) {
+      throw new Error(
+        'Tiene pedidos registrados, que conservan su historial. Si ya no la usas, edítala y márcala como «Retirada».',
+      )
+    }
+    if (isCloudMode) await dbDeleteMachine(machineId)
+    setMachines((prev) => prev.filter((m) => m.id !== machineId))
+    setMaintenance((prev) => prev.filter((r) => r.machineId !== machineId))
+  }
+
+  /** Deletes a maintenance record; nothing references it, so no cascade is needed. */
+  async function handleDeleteMaintenance(recordId: string): Promise<void> {
+    if (isCloudMode) await dbDeleteMaintenanceRecord(recordId)
+    setMaintenance((prev) => prev.filter((r) => r.id !== recordId))
+  }
+
+  /**
+   * Deletes a supply with its material and stock movements; blocked when
+   * orders used the material (delete those orders first — the reversal
+   * returns the stock automatically).
+   */
+  async function handleDeleteSupply(supplyId: string): Promise<void> {
+    const material = materials.find((m) => m.supplyId === supplyId)
+    if (material && orders.some((o) => o.materialId === material.id)) {
+      throw new Error(
+        'Su material tiene pedidos registrados. Elimina primero esos pedidos (en Cotizaciones) para liberarlo.',
+      )
+    }
+    if (isCloudMode) await dbDeleteSupply(supplyId)
+    setSupplies((prev) => prev.filter((s) => s.id !== supplyId))
+    setMaterials((prev) => prev.filter((m) => m.supplyId !== supplyId))
+  }
+
   async function handleSignOut() {
     await supabase?.auth.signOut()
   }
@@ -332,6 +374,9 @@ export default function App() {
             onMaterialsChange={setMaterials}
             onSaveMaintenance={handleSaveMaintenance}
             onStockAdjustment={handleStockAdjustment}
+            onDeleteMachine={handleDeleteMachine}
+            onDeleteMaintenance={handleDeleteMaintenance}
+            onDeleteSupply={handleDeleteSupply}
           />
         )}
       </main>

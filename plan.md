@@ -92,6 +92,7 @@ Goal: A deployed MVP ready for the owner's review.
 
 - [x] Add maintenance history and due-date indicators. *(maintenance now persists: fetch from DB, registration form with date fields, overdue badges; empty-state row added)*
 - [x] Add configurable depreciation estimates, stock adjustments, and low-stock indicators. *(machine form already configurable: useful life, residual value, annual hours/cost; new manual stock-movement form — purchases and corrections — writing to `stock_adjustments`, stock refreshes from the view; low-stock badges live)*
+- [ ] Add delete actions for machines, maintenance records, and supplies. *(`0006` RPCs: machine delete takes its maintenance with it but is blocked by orders — decommission = "Retirada"; supply delete takes its material and stock movements but is blocked by orders; maintenance deletes directly; Spanish confirm dialogs + inline errors; pending owner test after running migration `0006`)*
 - [ ] Check both tabs on desktop and phone; show useful loading and error states. *(loading and error cards done; owner to verify both viewports)*
 - [ ] Configure deployment environment variables and authentication redirect URLs.
 - [ ] Deploy to a hosting plan that permits the intended use; use sample data for initial validation.

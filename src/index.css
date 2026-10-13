@@ -755,6 +755,11 @@ th.num {
   outline-offset: 1px;
 }
 
+/* Row actions sit next to each other (edit + delete); keep them apart. */
+.icon-btn + .icon-btn {
+  margin-left: var(--space-1);
+}
+
 .small {
   font-size: 12px;
 }

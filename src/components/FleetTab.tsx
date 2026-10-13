@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AlertTriangle, Boxes, Pencil, Plus, Printer, Settings, Wrench, X } from 'lucide-react'
+import { AlertTriangle, Boxes, Pencil, Plus, Printer, Settings, Trash2, Wrench, X } from 'lucide-react'
 import type { Machine, MaintenanceRecord, Material, Order, Supply } from '../types'
 import { formatMoney } from '../lib/calc'
 import { SelectField, TextField } from './fields'
@@ -23,6 +23,9 @@ interface FleetTabProps {
   onMaterialsChange: (materials: Material[]) => void
   onSaveMaintenance: (input: MaintenanceInput) => Promise<MaintenanceRecord>
   onStockAdjustment: (supplyId: string, delta: number, reason: string) => Promise<void>
+  onDeleteMachine: (machineId: string) => Promise<void>
+  onDeleteMaintenance: (recordId: string) => Promise<void>
+  onDeleteSupply: (supplyId: string) => Promise<void>
 }
 
 function stockQty(supply: Supply): number {
@@ -121,6 +124,9 @@ export function FleetTab({
   onMaterialsChange,
   onSaveMaintenance,
   onStockAdjustment,
+  onDeleteMachine,
+  onDeleteMaintenance,
+  onDeleteSupply,
 }: FleetTabProps) {
   const today = new Date().toISOString().slice(0, 10)
 
@@ -139,6 +145,12 @@ export function FleetTab({
   const [formError, setFormError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [adjustFlash, setAdjustFlash] = useState(false)
+  // Delete failures (e.g. a record still referenced by orders) surface right
+  // next to the table where the button lives, not inside the forms below.
+  const [deleteError, setDeleteError] = useState<{
+    section: 'machines' | 'maintenance' | 'supplies'
+    message: string
+  } | null>(null)
 
   // Repair preselections that go stale when data loads asynchronously
   // (sample data → fetched data), same pattern as OrdersTab.
@@ -347,6 +359,45 @@ export function FleetTab({
     setMaterialForm({ id: m.id, name: m.name, costPer1000g: String(m.costPer1000g), minThreshold: '' })
   }
 
+  async function runDelete(
+    section: 'machines' | 'maintenance' | 'supplies',
+    action: () => Promise<void>,
+  ) {
+    setDeleteError(null)
+    try {
+      await action()
+    } catch (err) {
+      setDeleteError({ section, message: err instanceof Error ? err.message : 'Error desconocido' })
+    }
+  }
+
+  function confirmDeleteMachine(m: Machine) {
+    if (
+      !window.confirm(
+        `¿Eliminar la impresora "${m.name}"? También se eliminarán sus registros de mantenimiento.`,
+      )
+    )
+      return
+    void runDelete('machines', () => onDeleteMachine(m.id))
+  }
+
+  function confirmDeleteMaintenance(r: MaintenanceRecord) {
+    const machine = machines.find((m) => m.id === r.machineId)
+    if (!window.confirm(`¿Eliminar el mantenimiento del ${machine?.name ?? 'equipo'} (${r.performedAt})?`))
+      return
+    void runDelete('maintenance', () => onDeleteMaintenance(r.id))
+  }
+
+  function confirmDeleteSupply(s: Supply) {
+    if (
+      !window.confirm(
+        `¿Eliminar el insumo "${s.name}"? También se eliminarán su material vinculado y sus movimientos de stock.`,
+      )
+    )
+      return
+    void runDelete('supplies', () => onDeleteSupply(s.id))
+  }
+
   return (
     <>
       <div className="card">
@@ -399,6 +450,14 @@ export function FleetTab({
                       >
                         <Pencil size={14} aria-hidden="true" />
                       </button>
+                      <button
+                        className="icon-btn"
+                        onClick={() => confirmDeleteMachine(m)}
+                        title="Eliminar impresora"
+                        aria-label={`Eliminar ${m.name}`}
+                      >
+                        <Trash2 size={14} aria-hidden="true" />
+                      </button>
                     </td>
                   </tr>
                 )
@@ -406,6 +465,11 @@ export function FleetTab({
             </tbody>
           </table>
         </div>
+        {deleteError?.section === 'machines' && (
+          <span className="error" role="alert" style={{ display: 'block', marginTop: 'var(--space-2)' }}>
+            {deleteError.message}
+          </span>
+        )}
         <p className="small muted" style={{ marginTop: 'var(--space-2)' }}>
           El valor residual se resta a la inversión antes de amortizar.
         </p>
@@ -512,12 +576,13 @@ export function FleetTab({
                   <th>Descripción</th>
                   <th className="num">Costo</th>
                   <th>Próximo vencimiento</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 {maintenance.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="muted">
+                    <td colSpan={6} className="muted">
                       Sin registros todavía.
                     </td>
                   </tr>
@@ -542,12 +607,27 @@ export function FleetTab({
                           <span className="badge badge-ok">Vence {r.nextDueAt}</span>
                         )}
                       </td>
+                      <td>
+                        <button
+                          className="icon-btn"
+                          onClick={() => confirmDeleteMaintenance(r)}
+                          title="Eliminar registro"
+                          aria-label={`Eliminar mantenimiento del ${machine?.name ?? 'equipo'} del ${r.performedAt}`}
+                        >
+                          <Trash2 size={14} aria-hidden="true" />
+                        </button>
+                      </td>
                     </tr>
                   )
                 })}
               </tbody>
             </table>
           </div>
+          {deleteError?.section === 'maintenance' && (
+            <span className="error" role="alert" style={{ display: 'block', marginTop: 'var(--space-2)' }}>
+              {deleteError.message}
+            </span>
+          )}
           <form onSubmit={handleMaintenanceSubmit} noValidate style={{ marginTop: 'var(--space-3)' }}>
             <h3>
               <Plus size={16} aria-hidden="true" /> Registrar mantenimiento
@@ -616,6 +696,7 @@ export function FleetTab({
                   <th className="num">En existencia</th>
                   <th className="num">Mínimo</th>
                   <th>Estado</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -655,12 +736,27 @@ export function FleetTab({
                           <span className="badge badge-ok">OK</span>
                         )}
                       </td>
+                      <td>
+                        <button
+                          className="icon-btn"
+                          onClick={() => confirmDeleteSupply(s)}
+                          title="Eliminar insumo"
+                          aria-label={`Eliminar ${s.name}`}
+                        >
+                          <Trash2 size={14} aria-hidden="true" />
+                        </button>
+                      </td>
                     </tr>
                   )
                 })}
               </tbody>
             </table>
           </div>
+          {deleteError?.section === 'supplies' && (
+            <span className="error" role="alert" style={{ display: 'block', marginTop: 'var(--space-2)' }}>
+              {deleteError.message}
+            </span>
+          )}
           <p className="small muted" style={{ marginTop: 'var(--space-2)' }}>
             El stock es la suma de los ajustes. Al guardar un pedido se descuentan
             automáticamente los gramos del insumo vinculado al material.

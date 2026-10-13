@@ -97,6 +97,28 @@ export async function updateMachine(id: string, input: MachineInput): Promise<Ma
   return toMachine(data as MachineRow)
 }
 
+/**
+ * The delete RPCs (migration 0006) raise the sentinel HAS_ORDERS when orders
+ * still reference the row; translate that into the owner-facing message and
+ * keep anything else behind the usual prefix.
+ */
+function deleteBlockedMessage(prefix: string, raw: string, inUseHint: string): Error {
+  if (raw.includes('HAS_ORDERS')) return new Error(inUseHint)
+  return new Error(`${prefix}: ${raw}`)
+}
+
+/** Deletes a machine together with its maintenance records; blocked when orders reference it. */
+export async function deleteMachine(id: string): Promise<void> {
+  const { error } = await supabase!.rpc('delete_machine_cascade', { p_machine_id: id })
+  if (error) {
+    throw deleteBlockedMessage(
+      'No se pudo eliminar la impresora',
+      error.message,
+      'Tiene pedidos registrados, que conservan su historial. Si ya no la usas, edítala y márcala como «Retirada».',
+    )
+  }
+}
+
 export async function fetchMaterials(): Promise<Material[]> {
   const { data, error } = await supabase!
     .from('materials')
@@ -192,6 +214,12 @@ export async function insertMaintenance(input: MaintenanceInput): Promise<Mainte
     .single()
   if (error) throw new Error(`No se pudo guardar el mantenimiento: ${error.message}`)
   return toMaintenance(data as MaintenanceRow)
+}
+
+/** Deletes a maintenance record; nothing references it, so a plain delete suffices. */
+export async function deleteMaintenanceRecord(id: string): Promise<void> {
+  const { error } = await supabase!.from('maintenance_records').delete().eq('id', id)
+  if (error) throw new Error(`No se pudo eliminar el registro de mantenimiento: ${error.message}`)
 }
 
 // ---- Manual stock adjustments (purchases, corrections) ----
@@ -347,4 +375,16 @@ export async function fetchSuppliesWithStock(): Promise<SupplyStock[]> {
     minThreshold: Number(r.min_threshold),
     stockQty: stockBySupply.get(r.id) ?? 0,
   }))
+}
+
+/** Deletes a supply together with its material and stock movements; blocked when orders used it. */
+export async function deleteSupply(id: string): Promise<void> {
+  const { error } = await supabase!.rpc('delete_supply_cascade', { p_supply_id: id })
+  if (error) {
+    throw deleteBlockedMessage(
+      'No se pudo eliminar el insumo',
+      error.message,
+      'Su material tiene pedidos registrados. Elimina primero esos pedidos (en Cotizaciones) para liberarlo.',
+    )
+  }
 }

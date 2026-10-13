@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Boxes, Calculator, LogOut } from 'lucide-react'
+import { Boxes, Calculator, LogOut, Menu } from 'lucide-react'
 import type { Session } from '@supabase/supabase-js'
 import type { Machine, MaintenanceRecord, Material, Order, Supply } from './types'
 import {
@@ -58,6 +58,8 @@ export default function App() {
   const [authReady, setAuthReady] = useState(!isCloudMode)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [dataLoading, setDataLoading] = useState(false)
+  // Phone-only hamburger menu; irrelevant (and hidden) on desktop.
+  const [menuOpen, setMenuOpen] = useState(false)
 
   // Prototype state: in-memory only when no Supabase is configured.
   const [orders, setOrders] = useState<Order[]>(sampleOrders)
@@ -236,13 +238,21 @@ export default function App() {
     <>
       <header className="app-header">
         <h1>Panel de Impresión 3D</h1>
-        <nav className="tab-nav" role="tablist" aria-label="Secciones principales">
+        <nav
+          id="main-tabs"
+          className={`tab-nav ${menuOpen ? 'tab-nav-open' : ''}`}
+          role="tablist"
+          aria-label="Secciones principales"
+        >
           {tabs.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               role="tab"
               aria-selected={tab === id}
-              onClick={() => setTab(id)}
+              onClick={() => {
+                setTab(id)
+                setMenuOpen(false)
+              }}
             >
               <Icon size={15} aria-hidden="true" /> {label}
             </button>
@@ -258,7 +268,23 @@ export default function App() {
             </button>
           </div>
         )}
+        <button
+          className="menu-toggle"
+          onClick={() => setMenuOpen((o) => !o)}
+          aria-expanded={menuOpen}
+          aria-controls="main-tabs"
+          aria-label="Secciones"
+        >
+          <Menu size={18} aria-hidden="true" />
+        </button>
       </header>
+      {menuOpen && (
+        <div
+          className="menu-backdrop"
+          onClick={() => setMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
 
       <main className="page">
         <div className="page-intro">

@@ -570,27 +570,64 @@ th.num {
   gap: var(--space-3);
 }
 
-/* Narrow screens: title and account share the top row, tabs center below.
+/* Narrow screens: title, account, and hamburger share the top row; the
+   tabs move into a dropdown panel that drops below the header bar when
+   the hamburger is tapped.
+
    minmax(0, 1fr) lets the title column shrink below its content (grid
    items default to min-width:auto, which caused the header to overflow
    the viewport on phones); the email truncates harder and side padding
-   tightens to keep everything inside the screen edges. */
+   tightens to keep everything inside the screen edges.
+
+   z-index:30 lifts the header (and, by inheritance of its stacking
+   context, the dropdown panel) above the fixed .menu-backdrop, so the
+   bar stays readable and the hamburger keeps working to close. */
 @media (max-width: 800px) {
   .app-header {
-    grid-template-columns: minmax(0, 1fr) auto;
-    row-gap: var(--space-2);
+    grid-template-columns: minmax(0, 1fr) auto auto;
     padding: var(--space-3) var(--space-4);
+    position: relative;
+    z-index: 30;
   }
   .header-account {
     grid-row: 1;
     grid-column: 2;
   }
-  .tab-nav {
-    grid-column: 1 / -1;
-    justify-content: center;
+  .menu-toggle {
+    display: inline-flex;
+    grid-row: 1;
+    grid-column: 3;
   }
   .session-user {
     max-width: 140px;
+  }
+
+  /* Tab dropdown: out of grid flow (absolute), hidden until toggled. */
+  .tab-nav {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    background: var(--color-header);
+    border-bottom: 1px solid var(--color-border);
+    padding: var(--space-2) var(--space-4);
+  }
+  .tab-nav.tab-nav-open {
+    display: flex;
+  }
+  .tab-nav button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .menu-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 15;
   }
 }
 
@@ -627,6 +664,35 @@ th.num {
 .signout-btn:focus-visible {
   outline: 2px solid var(--color-ring);
   outline-offset: 2px;
+}
+
+/* ---- Hamburger menu (phone only; tabs are visible inline on desktop) ---- */
+.menu-toggle {
+  display: none;
+  font-family: var(--font-body);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-foreground);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  transition: background 150ms;
+}
+
+.menu-toggle:hover {
+  background: var(--color-muted);
+}
+
+.menu-toggle:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+/* Dim layer behind the open mobile menu; only rendered (and shown) on phone. */
+.menu-backdrop {
+  display: none;
 }
 
 /* ---- Icon-only buttons in tables ---- */

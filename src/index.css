@@ -154,6 +154,13 @@ h1, h2, h3 {
   .grid-2 {
     grid-template-columns: 1fr;
   }
+  /* Stacked layout: the owner wants the summary first, then the quote
+     form. Only an order override — DOM stays form-first so desktop
+     (two columns) is unaffected. The history card already follows the
+     grid in DOM order, so it ends up last. */
+  .grid-2 > .kpi-panel {
+    order: -1;
+  }
   .page {
     padding: var(--space-4);
   }

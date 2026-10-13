@@ -258,7 +258,7 @@ export default function App() {
   }
 
   const tabs: { id: Tab; label: string; icon: typeof Calculator }[] = [
-    { id: 'orders', label: 'Cotizaciones y Rentabilidad', icon: Calculator },
+    { id: 'orders', label: 'Cotizaciones', icon: Calculator },
     { id: 'fleet', label: 'Máquinas y Materiales', icon: Boxes },
   ]
 

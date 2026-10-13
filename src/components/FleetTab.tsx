@@ -145,6 +145,7 @@ export function FleetTab({
   const [formError, setFormError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [adjustFlash, setAdjustFlash] = useState(false)
+  const [activeForm, setActiveForm] = useState<'machine' | 'material' | 'maintenance' | 'adjustment' | null>(null)
   // Delete failures (e.g. a record still referenced by orders) surface right
   // next to the table where the button lives, not inside the forms below.
   const [deleteError, setDeleteError] = useState<{
@@ -165,12 +166,27 @@ export function FleetTab({
     )
   }, [machines, supplies])
 
+  useEffect(() => {
+    if (!activeForm) return
+    const form = document.getElementById(`${activeForm}-form`)
+    form?.querySelector<HTMLElement>('input, select')?.focus()
+  }, [activeForm, machineForm.id, materialForm.id])
+
   function setMachine<K extends keyof MachineForm>(key: K, value: MachineForm[K]) {
     setMachineForm((f) => ({ ...f, [key]: value }))
   }
 
   function setMaterial<K extends keyof MaterialForm>(key: K, value: MaterialForm[K]) {
     setMaterialForm((f) => ({ ...f, [key]: value }))
+  }
+
+  function openForm(form: 'machine' | 'material' | 'maintenance' | 'adjustment') {
+    setFormError(null)
+    setActiveForm(form)
+    if (form === 'machine') { setMachineForm(emptyMachineForm); setMachineErrors({}) }
+    if (form === 'material') { setMaterialForm(emptyMaterialForm); setMaterialErrors({}) }
+    if (form === 'maintenance') setMaintenanceErrors({})
+    if (form === 'adjustment') setAdjustmentErrors({})
   }
 
   function validateMachine(): boolean {
@@ -241,6 +257,7 @@ export function FleetTab({
         )
       }
       setMachineForm(emptyMachineForm)
+      setActiveForm(null)
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Error desconocido')
     } finally {
@@ -278,6 +295,7 @@ export function FleetTab({
         )
       }
       setMaterialForm(emptyMaterialForm)
+      setActiveForm(null)
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Error desconocido')
     } finally {
@@ -307,6 +325,7 @@ export function FleetTab({
         nextDueAt: f.nextDueAt || null,
       })
       setMaintenanceForm(emptyMaintenanceForm(machines))
+      setActiveForm(null)
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Error desconocido')
     } finally {
@@ -329,6 +348,7 @@ export function FleetTab({
     try {
       await onStockAdjustment(f.supplyId, delta, f.reason.trim())
       setAdjustmentForm(emptyAdjustmentForm(supplies))
+      setActiveForm(null)
       setAdjustFlash(true)
       setTimeout(() => setAdjustFlash(false), 2000)
     } catch (err) {
@@ -339,6 +359,7 @@ export function FleetTab({
   }
 
   function editMachine(m: Machine) {
+    setActiveForm('machine')
     setFormError(null)
     setMachineErrors({})
     setMachineForm({
@@ -354,6 +375,7 @@ export function FleetTab({
   }
 
   function editMaterial(m: Material) {
+    setActiveForm('material')
     setFormError(null)
     setMaterialErrors({})
     setMaterialForm({ id: m.id, name: m.name, costPer1000g: String(m.costPer1000g), minThreshold: '' })
@@ -401,9 +423,9 @@ export function FleetTab({
   return (
     <>
       <div className="card">
-        <h3>
-          <Settings size={16} aria-hidden="true" /> Flota y tarifas por hora
-        </h3>
+        <div className="section-heading"><h3><Settings size={16} aria-hidden="true" /> Flota y tarifas por hora</h3>
+          <button type="button" className="btn btn-secondary" onClick={() => openForm('machine')} aria-expanded={activeForm === 'machine'}><Plus size={16} aria-hidden="true" /> Agregar impresora</button>
+        </div>
         <div className="table-wrap">
           <table>
             <thead>
@@ -475,8 +497,8 @@ export function FleetTab({
         </p>
       </div>
 
-      <div className="grid-2">
-        <form className="card" onSubmit={handleMachineSubmit} noValidate>
+      {(activeForm === 'machine' || activeForm === 'material') && <div className="fleet-form-area">
+        {activeForm === 'machine' && <form id="machine-form" className="card" onSubmit={handleMachineSubmit} noValidate>
           <h3>
             {machineForm.id ? (
               <>
@@ -506,19 +528,11 @@ export function FleetTab({
             <button type="submit" className="btn" disabled={busy}>
               <Plus size={16} aria-hidden="true" /> {machineForm.id ? 'Guardar cambios' : 'Agregar'}
             </button>
-            {machineForm.id && (
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setMachineForm(emptyMachineForm)}
-              >
-                <X size={16} aria-hidden="true" /> Cancelar
-              </button>
-            )}
+            <button type="button" className="btn btn-secondary" onClick={() => setActiveForm(null)}><X size={16} aria-hidden="true" /> Cancelar</button>
           </div>
-        </form>
+        </form>}
 
-        <form className="card" onSubmit={handleMaterialSubmit} noValidate>
+        {activeForm === 'material' && <form id="material-form" className="card" onSubmit={handleMaterialSubmit} noValidate>
           <h3>
             {materialForm.id ? (
               <>
@@ -549,24 +563,16 @@ export function FleetTab({
             <button type="submit" className="btn" disabled={busy}>
               <Plus size={16} aria-hidden="true" /> {materialForm.id ? 'Guardar cambios' : 'Agregar'}
             </button>
-            {materialForm.id && (
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setMaterialForm(emptyMaterialForm)}
-              >
-                <X size={16} aria-hidden="true" /> Cancelar
-              </button>
-            )}
+            <button type="button" className="btn btn-secondary" onClick={() => setActiveForm(null)}><X size={16} aria-hidden="true" /> Cancelar</button>
           </div>
-        </form>
-      </div>
+        </form>}
+      </div>}
 
-      <div className="grid-2">
+      <div className="fleet-sections">
         <div className="card">
-          <h3>
-            <Wrench size={16} aria-hidden="true" /> Mantenimiento
-          </h3>
+          <div className="section-heading"><h3><Wrench size={16} aria-hidden="true" /> Mantenimiento</h3>
+            <button type="button" className="btn btn-secondary" onClick={() => openForm('maintenance')} aria-expanded={activeForm === 'maintenance'}><Plus size={16} aria-hidden="true" /> Registrar mantenimiento</button>
+          </div>
           <div className="table-wrap">
             <table>
               <thead>
@@ -628,7 +634,7 @@ export function FleetTab({
               {deleteError.message}
             </span>
           )}
-          <form onSubmit={handleMaintenanceSubmit} noValidate style={{ marginTop: 'var(--space-3)' }}>
+          {activeForm === 'maintenance' && <form id="maintenance-form" onSubmit={handleMaintenanceSubmit} noValidate className="inline-entry-form">
             <h3>
               <Plus size={16} aria-hidden="true" /> Registrar mantenimiento
             </h3>
@@ -680,14 +686,15 @@ export function FleetTab({
               <button type="submit" className="btn" disabled={busy}>
                 <Plus size={16} aria-hidden="true" /> Registrar
               </button>
+              <button type="button" className="btn btn-secondary" onClick={() => setActiveForm(null)}><X size={16} aria-hidden="true" /> Cancelar</button>
             </div>
-          </form>
+          </form>}
         </div>
 
         <div className="card">
-          <h3>
-            <Boxes size={16} aria-hidden="true" /> Insumos y existencias
-          </h3>
+          <div className="section-heading"><h3><Boxes size={16} aria-hidden="true" /> Insumos y existencias</h3>
+            <button type="button" className="btn btn-secondary" onClick={() => openForm('material')} aria-expanded={activeForm === 'material'}><Plus size={16} aria-hidden="true" /> Agregar material</button>
+          </div>
           <div className="table-wrap">
             <table>
               <thead>
@@ -761,7 +768,9 @@ export function FleetTab({
             El stock es la suma de los ajustes. Al guardar un pedido se descuentan
             automáticamente los gramos del insumo vinculado al material.
           </p>
-          <form onSubmit={handleAdjustmentSubmit} noValidate style={{ marginTop: 'var(--space-3)' }}>
+          <button type="button" className="btn btn-secondary" onClick={() => openForm('adjustment')} aria-expanded={activeForm === 'adjustment'}><Plus size={16} aria-hidden="true" /> Registrar movimiento</button>
+          {adjustFlash && <span className="small profit-positive" role="status">Movimiento registrado</span>}
+          {activeForm === 'adjustment' && <form id="adjustment-form" onSubmit={handleAdjustmentSubmit} noValidate className="inline-entry-form">
             <h3>
               <Plus size={16} aria-hidden="true" /> Registrar movimiento
             </h3>
@@ -799,13 +808,9 @@ export function FleetTab({
               <button type="submit" className="btn" disabled={busy}>
                 <Plus size={16} aria-hidden="true" /> Registrar movimiento
               </button>
-              {adjustFlash && (
-                <span className="small profit-positive" role="status">
-                  Movimiento registrado
-                </span>
-              )}
+              <button type="button" className="btn btn-secondary" onClick={() => setActiveForm(null)}><X size={16} aria-hidden="true" /> Cancelar</button>
             </div>
-          </form>
+          </form>}
         </div>
       </div>
     </>

@@ -8,6 +8,8 @@ dist-ssr/
 
 # Tooling (local skills/config, not project code)
 .opencode/
+.agents/
+screenshots/
 
 # Python caches
 __pycache__/
@@ -27,3 +29,6 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Files
+UI_UX_IMPROVEMENT_PLAN.md

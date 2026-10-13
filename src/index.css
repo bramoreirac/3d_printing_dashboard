@@ -41,19 +41,7 @@ body {
   line-height: 1.5;
 }
 
-/* Same Unsplash photo as the login page (.auth-page), dimmed further so
-   dense tables and small text stay readable over it. Rendered as a fixed
-   pseudo-element instead of background-attachment: fixed because iOS
-   Safari handles the latter poorly on long scrolling pages. */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background:
-    linear-gradient(rgba(13, 12, 9, 0.5), rgba(13, 12, 9, 0.94)),
-    url('/auth-bg.jpg') center / cover no-repeat;
-}
+/* Keep working surfaces quiet; the photograph belongs to the sign-in page. */
 
 h1, h2, h3 {
   font-family: var(--font-mono);
@@ -109,8 +97,9 @@ h1, h2, h3 {
 }
 
 .tab-nav button[aria-selected='true'] {
-  background: var(--color-primary);
-  color: var(--color-on-primary);
+  background: var(--color-muted);
+  color: var(--color-foreground);
+  border-color: var(--color-border);
 }
 
 .tab-nav button:focus-visible {
@@ -154,13 +143,6 @@ h1, h2, h3 {
   .grid-2 {
     grid-template-columns: 1fr;
   }
-  /* Stacked layout: the owner wants the summary first, then the quote
-     form. Only an order override — DOM stays form-first so desktop
-     (two columns) is unaffected. The history card already follows the
-     grid in DOM order, so it ends up last. */
-  .grid-2 > .kpi-panel {
-    order: -1;
-  }
   .page {
     padding: var(--space-4);
   }
@@ -197,7 +179,7 @@ h1, h2, h3 {
 }
 
 .field label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--color-muted-foreground);
 }
@@ -211,7 +193,7 @@ h1, h2, h3 {
   border-radius: 6px;
   background: var(--color-background);
   color: var(--color-foreground);
-  min-height: 36px;
+  min-height: 40px;
 }
 
 .field input:focus,
@@ -385,49 +367,66 @@ th.num {
   color: #fca5a5;
 }
 
-/* ---- KPI summary (one card beside the quote form) ---- */
-/* The panel stretches to the form card's height (grid-2 defaults to
-   align-items:start), and the rows share the space with flex:1 — so both
-   columns start and end on the same lines. */
-.kpi-panel {
-  align-self: stretch;
-  display: flex;
-  flex-direction: column;
-}
-
-.kpi-list {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-evenly;
-  gap: var(--space-2);
-}
-
-.kpi-line {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+/* ---- Business overview and current quote ---- */
+.metric-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--space-3);
-  padding: var(--space-2) 0;
 }
 
-.kpi-line + .kpi-line {
-  border-top: 1px solid var(--color-border);
+.metric {
+  min-width: 0;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
 }
 
-.kpi-label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+.metric span {
   color: var(--color-muted-foreground);
+  font-size: 12px;
+  font-weight: 600;
 }
 
-.kpi-value {
-  font-family: var(--font-mono);
-  font-size: 20px;
-  font-weight: 600;
-  white-space: nowrap;
+.metric strong {
+  font: 600 clamp(16px, 2vw, 22px) var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.metric-note { margin: calc(-1 * var(--space-4)) 0 0; }
+
+.quote-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(320px, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.quote-workspace > * { min-width: 0; }
+.quote-form h4 { font-size: 13px; margin: var(--space-6) 0 var(--space-3); color: var(--color-foreground); }
+.quote-form h3 + h4 { margin-top: var(--space-4); }
+.quote-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.quote-summary { display: flex; flex-direction: column; }
+.quote-summary .breakdown { margin-top: var(--space-2); }
+.quote-summary .breakdown-row { gap: var(--space-2); }
+.quote-summary .breakdown-row span:first-child { min-width: 0; }
+.quote-summary .breakdown-row span:last-child { flex-shrink: 0; }
+.save-note { margin: var(--space-6) 0 0; }
+.quote-summary .form-actions { flex-wrap: wrap; }
+.quote-summary .form-actions .btn { justify-content: center; width: 100%; }
+
+@media (max-width: 1000px) {
+  .metric-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .quote-workspace { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 600px) {
+  .metric-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .quote-fields { grid-template-columns: 1fr; }
 }
 
 /* ---- Quote breakdown ---- */
@@ -463,10 +462,12 @@ th.num {
   border: 1px dashed var(--color-border);
   border-radius: 6px;
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
   align-items: end;
 }
+
+.quote-summary .pricing-helper { grid-template-columns: 1fr; }
 
 .pricing-result {
   display: flex;
@@ -482,6 +483,31 @@ th.num {
   .pricing-helper {
     grid-template-columns: 1fr;
   }
+}
+
+/* ---- Orders and fleet sections ---- */
+.orders-table { min-width: 650px; }
+.orders-table td { vertical-align: middle; }
+.order-identity { min-width: 170px; white-space: normal; }
+.order-identity strong, .order-identity span { display: block; }
+.order-identity span { margin-top: 2px; }
+.order-actions { white-space: nowrap; text-align: right; }
+.order-detail-row td { background: var(--color-muted); white-space: normal; }
+.order-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-4); padding: var(--space-2); }
+.order-details > div { display: flex; flex-direction: column; gap: var(--space-1); }
+.order-details span { color: var(--color-muted-foreground); font-size: 12px; }
+.order-details strong { overflow-wrap: anywhere; }
+.section-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-3); }
+.section-heading h3 { margin: 0; }
+.section-heading .btn { flex-shrink: 0; }
+.fleet-form-area .card { max-width: 900px; }
+.fleet-sections { display: flex; flex-direction: column; gap: var(--space-6); }
+.fleet-sections .table-wrap td { white-space: normal; }
+.inline-entry-form { margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--color-border); }
+
+@media (max-width: 600px) {
+  .section-heading { align-items: stretch; flex-direction: column; }
+  .section-heading .btn { justify-content: center; }
 }
 
 /* Visually hidden but accessible to screen readers. */
@@ -733,6 +759,8 @@ th.num {
 /* ---- Icon-only buttons in tables ---- */
 .icon-btn {
   font-family: var(--font-body);
+  min-width: 32px;
+  min-height: 32px;
   padding: var(--space-1);
   border: 1px solid var(--color-border);
   border-radius: 6px;

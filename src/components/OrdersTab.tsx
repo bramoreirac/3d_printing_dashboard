@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Plus, Calculator, Trash2, TrendingUp } from 'lucide-react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Plus, Calculator, ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
 import type { GlobalSettings, Machine, Material, Order } from '../types'
 import {
   calculateQuote,
@@ -70,6 +70,7 @@ export function OrdersTab({
   // Markup/margin helper: the owner types a percentage, gets a suggested price.
   const [pricingMode, setPricingMode] = useState<PricingMode>('markup')
   const [pricingPct, setPricingPct] = useState('')
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null)
 
   const activeMachines = machines.filter((m) => m.isActive)
   const activeMaterials = materials.filter((m) => m.isActive)
@@ -198,15 +199,31 @@ export function OrdersTab({
     { revenue: 0, profit: 0 },
   )
   const paid = openOrders.reduce((acc, o) => acc + o.amountPaid, 0)
+  const outstanding = totals.revenue - paid
 
   return (
     <>
-      <div className="grid-2">
-        <form className="card" onSubmit={handleSubmit} noValidate>
+      <section className="metric-strip" aria-label="Resumen de todos los pedidos registrados">
+        <div className="metric"><span>Pedidos</span><strong>{openOrders.length}</strong></div>
+        <div className="metric"><span>Total cotizado</span><strong>{formatMoney(totals.revenue)}</strong></div>
+        <div className="metric"><span>Cobrado</span><strong>{formatMoney(paid)}</strong></div>
+        <div className="metric"><span>Saldo pendiente</span><strong>{formatMoney(outstanding)}</strong></div>
+        <div className="metric"><span>Ganancia estimada</span><strong className={totals.profit >= 0 ? 'profit-positive' : 'profit-negative'}>{formatMoney(totals.profit)}</strong></div>
+      </section>
+      <p className="small muted metric-note">Totales históricos de pedidos registrados; no corresponden a un período de cobros.</p>
+
+      <div className="quote-workspace">
+        <form id="quote-form" className="card quote-form" onSubmit={handleSubmit} noValidate>
           <h3>
             <Calculator size={16} aria-hidden="true" /> Nueva cotización
           </h3>
-          <div className="form-grid">
+          <h4>Cliente y pieza</h4>
+          <div className="form-grid quote-fields">
+            <TextField label="Cliente" value={form.clientName} onChange={(v) => set('clientName', v)} error={errors.clientName} placeholder="Ej. Roberto Gómez" />
+            <TextField label="Diseño / pieza" value={form.designName} onChange={(v) => set('designName', v)} error={errors.designName} placeholder="Ej. Lámpara de litofanía" />
+          </div>
+          <h4>Producción</h4>
+          <div className="form-grid quote-fields">
             <SelectField
               label="Impresora"
               value={form.machineId}
@@ -219,13 +236,14 @@ export function OrdersTab({
               onChange={(v) => set('materialId', v)}
               options={activeMaterials.map((m) => ({ value: m.id, label: m.name }))}
             />
-            <TextField label="Cliente" value={form.clientName} onChange={(v) => set('clientName', v)} error={errors.clientName} placeholder="Ej. Roberto Gómez" />
-            <TextField label="Diseño / pieza" value={form.designName} onChange={(v) => set('designName', v)} error={errors.designName} placeholder="Ej. Lámpara de litofanía" />
             <TextField label="Gramos" type="number" step="0.01" min="0" value={form.grams} onChange={(v) => set('grams', v)} error={errors.grams} placeholder="120" />
             <TextField label="Horas de impresión" type="number" step="0.01" min="0" value={form.printHours} onChange={(v) => set('printHours', v)} error={errors.printHours} placeholder="5" />
-            <TextField label="Mano de obra (opcional)" type="number" step="0.01" min="0" value={form.laborCost} onChange={(v) => set('laborCost', v)} error={errors.laborCost} placeholder="vacío = sin costo" />
-            <TextField label="Precio cobrado (USD)" type="number" step="0.01" min="0" value={form.priceTotal} onChange={(v) => set('priceTotal', v)} error={errors.priceTotal} placeholder="25.00" />
-            <TextField label="Monto cobrado" type="number" step="0.01" min="0" value={form.amountPaid} onChange={(v) => set('amountPaid', v)} error={errors.amountPaid} placeholder="0.00" />
+          </div>
+          <h4>Precio y pago</h4>
+          <div className="form-grid quote-fields">
+            <TextField label="Mano de obra (USD, opcional)" type="number" step="0.01" min="0" value={form.laborCost} onChange={(v) => set('laborCost', v)} error={errors.laborCost} placeholder="Vacío = sin costo" />
+            <TextField label="Precio de venta (USD)" type="number" step="0.01" min="0" value={form.priceTotal} onChange={(v) => set('priceTotal', v)} error={errors.priceTotal} placeholder="25.00" />
+            <TextField label="Abono recibido (USD)" type="number" step="0.01" min="0" value={form.amountPaid} onChange={(v) => set('amountPaid', v)} error={errors.amountPaid} placeholder="0.00" />
           </div>
 
           {(activeMachines.length === 0 || activeMaterials.length === 0) && (
@@ -235,7 +253,11 @@ export function OrdersTab({
             </p>
           )}
 
-          {draft && (
+        </form>
+
+        <aside className="card quote-summary" aria-label="Resumen de la cotización actual">
+          <h3>Resumen de esta cotización</h3>
+          {draft ? (
             <div className="breakdown" aria-live="polite">
               <div className="breakdown-row">
                 <span>Material ({material?.name})</span>
@@ -260,15 +282,20 @@ export function OrdersTab({
                 <span>{formatMoney(draft.totalCost)}</span>
               </div>
               <div className="breakdown-row">
+                <span>Precio de venta</span>
+                <span>{form.priceTotal.trim() ? formatMoney(Number(form.priceTotal) || 0) : '—'}</span>
+              </div>
+              <div className="breakdown-row">
                 <span>Ganancia</span>
-                <span className={draft.profit >= 0 ? 'profit-positive' : 'profit-negative'}>
-                  {formatMoney(draft.profit)}
-                  {draft.marginPct !== null && (
-                    <span className="muted"> · {draft.marginPct.toFixed(1)}% margen</span>
-                  )}
+                <span className={form.priceTotal.trim() ? (draft.profit >= 0 ? 'profit-positive' : 'profit-negative') : ''}>
+                  {form.priceTotal.trim() ? formatMoney(draft.profit) : '—'}
                 </span>
               </div>
+              {form.priceTotal.trim() && draft.marginPct !== null && <p className="small muted">Margen estimado: {draft.marginPct.toFixed(1)}%</p>}
+              {form.priceTotal.trim() && <div className="breakdown-row breakdown-total"><span>Saldo pendiente</span><span>{formatMoney(Math.max(0, Number(form.priceTotal) - (Number(form.amountPaid) || 0)))}</span></div>}
             </div>
+          ) : (
+            <p className="muted">Selecciona la impresora y el material; introduce gramos y horas para ver los costos.</p>
           )}
 
           {draft && (
@@ -315,8 +342,9 @@ export function OrdersTab({
             </div>
           )}
 
+          <p className="small muted save-note">{cloudMode ? 'Al guardar el pedido se descuentan del inventario los gramos del material seleccionado.' : 'En este prototipo el pedido se guarda solo en memoria y no descuenta el inventario.'}</p>
           <div className="form-actions">
-            <button type="submit" className="btn" disabled={!draft || saving}>
+            <button type="submit" form="quote-form" className="btn" disabled={!draft || saving}>
               <Plus size={16} aria-hidden="true" /> {saving ? 'Guardando…' : 'Guardar pedido'}
             </button>
             {savedFlash && (
@@ -332,53 +360,19 @@ export function OrdersTab({
               </span>
             )}
           </div>
-        </form>
-
-        <div className="card kpi-panel" role="group" aria-label="Resumen de pedidos">
-          <h3>
-            <TrendingUp size={16} aria-hidden="true" /> Resumen
-          </h3>
-          <div className="kpi-list">
-            <div className="kpi-line">
-              <span className="kpi-label">Pedidos</span>
-              <span className="kpi-value">{openOrders.length}</span>
-            </div>
-            <div className="kpi-line">
-              <span className="kpi-label">Total cotizado</span>
-              <span className="kpi-value">{formatMoney(totals.revenue)}</span>
-            </div>
-            <div className="kpi-line">
-              <span className="kpi-label">Cobrado</span>
-              <span className="kpi-value">{formatMoney(paid)}</span>
-            </div>
-            <div className="kpi-line">
-              <span className="kpi-label">Ganancia estimada</span>
-              <span
-                className={`kpi-value ${totals.profit >= 0 ? 'profit-positive' : 'profit-negative'}`}
-              >
-                {formatMoney(totals.profit)}
-              </span>
-            </div>
-          </div>
-        </div>
+        </aside>
       </div>
 
       <div className="card">
         <h3>Historial de pedidos</h3>
         <div className="table-wrap">
-          <table>
+          <table className="orders-table">
             <thead>
               <tr>
                 <th>Fecha</th>
-                <th>Cliente</th>
-                <th>Diseño</th>
-                <th>Impresora</th>
-                <th className="num">g</th>
-                <th className="num">Horas</th>
-                <th className="num">Costo</th>
+                <th>Cliente / pieza</th>
                 <th className="num">Precio</th>
-                <th className="num">Cobrado</th>
-                <th className="num">Ganancia</th>
+                <th className="num">Saldo pendiente</th>
                 <th>Pago</th>
                 <th>
                   <span className="sr-only">Acciones</span>
@@ -386,26 +380,25 @@ export function OrdersTab({
               </tr>
             </thead>
             <tbody>
+              {orders.length === 0 && <tr><td colSpan={6} className="muted">Aún no hay pedidos registrados.</td></tr>}
               {orders.map((o) => {
                 const mach = machines.find((m) => m.id === o.machineId)
+                const orderMaterial = materials.find((m) => m.id === o.materialId)
+                const expanded = expandedOrderId === o.id
                 return (
-                  <tr key={o.id}>
+                  <Fragment key={o.id}>
+                  <tr>
                     <td>{o.orderDate}</td>
-                    <td>{o.clientName}</td>
-                    <td>{o.designName}</td>
-                    <td>{mach?.name ?? '—'}</td>
-                    <td className="num">{o.grams}</td>
-                    <td className="num">{o.printHours}</td>
-                    <td className="num">{formatMoney(o.totalCost)}</td>
+                    <td className="order-identity"><strong>{o.clientName}</strong><span className="muted">{o.designName}</span></td>
                     <td className="num">{formatMoney(o.priceTotal)}</td>
-                    <td className="num">{formatMoney(o.amountPaid)}</td>
-                    <td className={`num ${o.profit >= 0 ? 'profit-positive' : 'profit-negative'}`}>
-                      {formatMoney(o.profit)}
-                    </td>
+                    <td className="num">{formatMoney(Math.max(0, o.priceTotal - o.amountPaid))}</td>
                     <td>
                       <PaymentBadge status={paymentStatus(o.priceTotal, o.amountPaid)} />
                     </td>
-                    <td>
+                    <td className="order-actions">
+                      <button className="icon-btn" onClick={() => setExpandedOrderId(expanded ? null : o.id)} aria-expanded={expanded} aria-label={`${expanded ? 'Ocultar' : 'Ver'} detalles del pedido de ${o.clientName}`}>
+                        {expanded ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
+                      </button>
                       <button
                         className="icon-btn"
                         onClick={() => handleDelete(o)}
@@ -416,6 +409,22 @@ export function OrdersTab({
                       </button>
                     </td>
                   </tr>
+                  {expanded && <tr className="order-detail-row"><td colSpan={6}>
+                    <div className="order-details">
+                      <div><span>Impresora</span><strong>{mach?.name ?? '—'}</strong></div>
+                      <div><span>Material</span><strong>{orderMaterial?.name ?? '—'}</strong></div>
+                      <div><span>Material usado</span><strong>{o.grams} g</strong></div>
+                      <div><span>Tiempo</span><strong>{o.printHours} h</strong></div>
+                      <div><span>Costo</span><strong>{formatMoney(o.totalCost)}</strong></div>
+                      <div><span>Costo de material</span><strong>{formatMoney(o.materialCost)}</strong></div>
+                      <div><span>Energía</span><strong>{formatMoney(o.energyCost)}</strong></div>
+                      <div><span>Desgaste</span><strong>{formatMoney(o.wearCost)}</strong></div>
+                      <div><span>Mano de obra</span><strong>{formatMoney(o.laborCost ?? 0)}</strong></div>
+                      <div><span>Cobrado</span><strong>{formatMoney(o.amountPaid)}</strong></div>
+                      <div><span>Ganancia estimada</span><strong className={o.profit >= 0 ? 'profit-positive' : 'profit-negative'}>{formatMoney(o.profit)}</strong></div>
+                    </div>
+                  </td></tr>}
+                  </Fragment>
                 )
               })}
             </tbody>

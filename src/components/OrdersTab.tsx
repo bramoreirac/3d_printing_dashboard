@@ -21,6 +21,7 @@ interface OrdersTabProps {
   cloudMode: boolean
   onSaveOrder: (input: SaveOrderInput) => Promise<Order>
   onDeleteOrder: (orderId: string) => Promise<void>
+  onUpdateOrderPayment: (order: Order, amountPaid: number) => Promise<Order>
 }
 
 interface FormState {
@@ -61,6 +62,7 @@ export function OrdersTab({
   cloudMode,
   onSaveOrder,
   onDeleteOrder,
+  onUpdateOrderPayment,
 }: OrdersTabProps) {
   const [form, setForm] = useState<FormState>(() => emptyForm(machines, materials))
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -71,6 +73,11 @@ export function OrdersTab({
   const [pricingMode, setPricingMode] = useState<PricingMode>('markup')
   const [pricingPct, setPricingPct] = useState('')
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null)
+  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null)
+  const [paymentValue, setPaymentValue] = useState('')
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [savingPayment, setSavingPayment] = useState(false)
+  const [paymentSavedId, setPaymentSavedId] = useState<string | null>(null)
 
   const activeMachines = machines.filter((m) => m.isActive)
   const activeMaterials = materials.filter((m) => m.isActive)
@@ -191,6 +198,35 @@ export function OrdersTab({
   function applySuggestion() {
     if (suggestion === null) return
     set('priceTotal', String(money(suggestion)))
+  }
+
+  function startPaymentEdit(order: Order) {
+    setExpandedOrderId(order.id)
+    setEditingPaymentId(order.id)
+    setPaymentValue(String(order.amountPaid))
+    setPaymentError(null)
+    setPaymentSavedId(null)
+  }
+
+  async function handlePaymentSubmit(event: React.FormEvent, order: Order) {
+    event.preventDefault()
+    if (savingPayment) return
+    const parsed = Number(paymentValue)
+    if (!/^\d+(?:\.\d{1,2})?$/.test(paymentValue.trim()) || !Number.isFinite(parsed) || parsed > order.priceTotal) {
+      setPaymentError(`Introduce el total recibido (0 a ${formatMoney(order.priceTotal)}) con hasta dos decimales.`)
+      return
+    }
+    setSavingPayment(true)
+    setPaymentError(null)
+    try {
+      await onUpdateOrderPayment(order, money(parsed))
+      setEditingPaymentId(null)
+      setPaymentSavedId(order.id)
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : 'No se pudo actualizar el pago.')
+    } finally {
+      setSavingPayment(false)
+    }
   }
 
   const openOrders = orders.filter((o) => o.status !== 'cancelled')
@@ -423,6 +459,20 @@ export function OrdersTab({
                       <div><span>Cobrado</span><strong>{formatMoney(o.amountPaid)}</strong></div>
                       <div><span>Ganancia estimada</span><strong className={o.profit >= 0 ? 'profit-positive' : 'profit-negative'}>{formatMoney(o.profit)}</strong></div>
                     </div>
+                    {o.status !== 'cancelled' && (editingPaymentId === o.id ? (
+                      <form className="payment-editor" onSubmit={(event) => void handlePaymentSubmit(event, o)} noValidate>
+                        <div className="field">
+                          <label htmlFor={`payment-${o.id}`}>Total recibido hasta hoy (USD)</label>
+                          <input id={`payment-${o.id}`} type="number" min="0" max={o.priceTotal} step="0.01" value={paymentValue} onChange={(event) => setPaymentValue(event.target.value)} aria-invalid={Boolean(paymentError)} aria-describedby={paymentError ? `payment-error-${o.id}` : undefined} autoFocus />
+                        </div>
+                        <button type="button" className="btn btn-secondary" onClick={() => { setPaymentValue(String(o.priceTotal)); setPaymentError(null) }}>Usar total del pedido</button>
+                        <button type="submit" className="btn" disabled={savingPayment}>{savingPayment ? 'Guardando…' : 'Guardar pago'}</button>
+                        <button type="button" className="btn btn-secondary" onClick={() => { setEditingPaymentId(null); setPaymentError(null) }}>Cancelar</button>
+                        {paymentError && <span id={`payment-error-${o.id}`} className="error" role="alert">{paymentError}</span>}
+                      </form>
+                    ) : (
+                      <div className="payment-editor-actions"><button type="button" className="btn btn-secondary" onClick={() => startPaymentEdit(o)}>Editar pago</button>{paymentSavedId === o.id && <span className="small profit-positive" role="status">Pago actualizado</span>}</div>
+                    ))}
                   </td></tr>}
                   </Fragment>
                 )

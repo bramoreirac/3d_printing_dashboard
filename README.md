@@ -62,3 +62,19 @@ running them must be signed in to the console):
   monthly operating costs.
 - Orders snapshot their costs at save time: changing rates later does not
   alter history.
+- To record a later payment, expand the order in Historial de pedidos, choose
+  **Editar pago**, enter the total received to date (or use **Usar total del pedido**),
+  and save. This updates the balance and payment status without changing stock
+  or the saved cost breakdown. Individual payment transactions are not recorded.
+
+## Owner decisions for later work
+
+- **Quote and order numbers:** confirm whether each needs a separate customer-facing
+  sequence, its prefix, and whether it resets annually. Keep the UUID as the
+  internal key; a few UUID digits alone do not guarantee a unique business number.
+- **Printable document:** decide whether the need is a quote, receipt, invoice,
+  or several documents. Confirm the business details, required tax information,
+  numbering, and correction/cancellation rules before building the print layout.
+- **Broader order editing:** changing printer, material, grams, hours, or price
+  needs a defined repricing and inventory adjustment workflow. The current edit
+  changes only the cumulative amount paid.

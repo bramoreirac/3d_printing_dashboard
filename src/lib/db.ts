@@ -336,6 +336,31 @@ export async function saveOrder(input: SaveOrderInput): Promise<Order> {
   return toOrder(data as OrderRow)
 }
 
+/** Updates only the cumulative payment and the current payment-derived status.
+ * The expected previous amount prevents a stale editor from overwriting a newer payment.
+ * Cost snapshots and stock movements are intentionally untouched.
+ */
+export async function updateOrderPayment(order: Order, amountPaid: number): Promise<Order> {
+  if (!Number.isFinite(amountPaid) || amountPaid < 0 || amountPaid > order.priceTotal) {
+    throw new Error('El total recibido debe estar entre 0 y el precio de venta.')
+  }
+  if (order.status === 'cancelled') throw new Error('No se puede registrar un pago en un pedido cancelado.')
+  const { data, error } = await supabase!
+    .from('orders')
+    .update({
+      amount_paid: amountPaid,
+      status: amountPaid >= order.priceTotal ? 'completed' : 'open',
+    })
+    .eq('id', order.id)
+    .eq('amount_paid', order.amountPaid)
+    .neq('status', 'cancelled')
+    .select('id, machine_id, material_id, client_name, design_name, order_date, grams, print_hours, labor_cost, price_total, amount_paid, material_price_per_1000g, material_cost, energy_cost, wear_cost, total_cost, profit, status')
+    .maybeSingle()
+  if (error) throw new Error(`No se pudo actualizar el pago: ${error.message}`)
+  if (!data) throw new Error('El pedido cambió desde que abriste el formulario. Recarga los datos antes de volver a intentarlo.')
+  return toOrder(data as OrderRow)
+}
+
 /** Deletes an order; the RPC reverses its stock deduction in the same transaction. */
 export async function deleteOrder(orderId: string): Promise<void> {
   const { error } = await supabase!.rpc('delete_order_with_stock_reversal', {

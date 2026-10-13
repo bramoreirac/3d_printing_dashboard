@@ -24,6 +24,7 @@ import {
   insertMaintenance,
   insertStockAdjustment,
   saveOrder,
+  updateOrderPayment,
   type MaintenanceInput,
   type SaveOrderInput,
   type SupplyStock,
@@ -167,6 +168,18 @@ export default function App() {
       await refreshSupplies()
     }
     setOrders((prev) => prev.filter((o) => o.id !== orderId))
+  }
+
+  async function handleUpdateOrderPayment(order: Order, amountPaid: number): Promise<Order> {
+    if (!Number.isFinite(amountPaid) || amountPaid < 0 || amountPaid > order.priceTotal) {
+      throw new Error('El total recibido debe estar entre 0 y el precio de venta.')
+    }
+    if (order.status === 'cancelled') throw new Error('No se puede registrar un pago en un pedido cancelado.')
+    const updated = isCloudMode
+      ? await updateOrderPayment(order, amountPaid)
+      : { ...order, amountPaid, status: (amountPaid >= order.priceTotal ? 'completed' : 'open') as Order['status'] }
+    setOrders((prev) => prev.map((o) => o.id === order.id ? updated : o))
+    return updated
   }
 
   /** Saves a maintenance record; cloud mode persists, prototype keeps it in memory. */
@@ -361,6 +374,7 @@ export default function App() {
             cloudMode={isCloudMode}
             onSaveOrder={handleSaveOrder}
             onDeleteOrder={handleDeleteOrder}
+            onUpdateOrderPayment={handleUpdateOrderPayment}
           />
         ) : (
           <FleetTab

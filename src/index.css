@@ -84,6 +84,7 @@ h1, h2, h3 {
 .tab-nav {
   display: flex;
   gap: var(--space-1);
+  flex-wrap: wrap;
 }
 
 .tab-nav button {
@@ -569,11 +570,16 @@ th.num {
   gap: var(--space-3);
 }
 
-/* Narrow screens: title and account share the top row, tabs center below. */
+/* Narrow screens: title and account share the top row, tabs center below.
+   minmax(0, 1fr) lets the title column shrink below its content (grid
+   items default to min-width:auto, which caused the header to overflow
+   the viewport on phones); the email truncates harder and side padding
+   tightens to keep everything inside the screen edges. */
 @media (max-width: 800px) {
   .app-header {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     row-gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
   }
   .header-account {
     grid-row: 1;
@@ -582,6 +588,9 @@ th.num {
   .tab-nav {
     grid-column: 1 / -1;
     justify-content: center;
+  }
+  .session-user {
+    max-width: 140px;
   }
 }
 

@@ -377,32 +377,37 @@ th.num {
   color: #fca5a5;
 }
 
-/* ---- KPI cards ---- */
-/* Vertical stack for the summary beside the quote form. Cards stretch to
-   match the form card's height (flex:1 shares the space equally), so both
-   columns of .grid-2 end on the same bottom line. */
-.kpi-stack {
+/* ---- KPI summary (one card beside the quote form) ---- */
+/* The panel stretches to the form card's height (grid-2 defaults to
+   align-items:start), and the rows share the space with flex:1 — so both
+   columns start and end on the same lines. */
+.kpi-panel {
+  align-self: stretch;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  align-self: stretch;
 }
 
-.kpi-stack .kpi {
+.kpi-list {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-evenly;
+  gap: var(--space-2);
 }
 
-.kpi {
-  background: var(--color-card);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: var(--space-3) var(--space-4);
+.kpi-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
 }
 
-.kpi .kpi-label {
+.kpi-line + .kpi-line {
+  border-top: 1px solid var(--color-border);
+}
+
+.kpi-label {
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -410,11 +415,11 @@ th.num {
   color: var(--color-muted-foreground);
 }
 
-.kpi .kpi-value {
+.kpi-value {
   font-family: var(--font-mono);
   font-size: 20px;
   font-weight: 600;
-  margin-top: 2px;
+  white-space: nowrap;
 }
 
 /* ---- Quote breakdown ---- */

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, Calculator, Trash2 } from 'lucide-react'
+import { Plus, Calculator, Trash2, TrendingUp } from 'lucide-react'
 import type { GlobalSettings, Machine, Material, Order } from '../types'
 import {
   calculateQuote,
@@ -334,23 +334,30 @@ export function OrdersTab({
           </div>
         </form>
 
-        <div className="kpi-stack" role="group" aria-label="Resumen de pedidos">
-          <div className="kpi">
-            <div className="kpi-label">Pedidos</div>
-            <div className="kpi-value">{openOrders.length}</div>
-          </div>
-          <div className="kpi">
-            <div className="kpi-label">Total cotizado</div>
-            <div className="kpi-value">{formatMoney(totals.revenue)}</div>
-          </div>
-          <div className="kpi">
-            <div className="kpi-label">Cobrado</div>
-            <div className="kpi-value">{formatMoney(paid)}</div>
-          </div>
-          <div className="kpi">
-            <div className="kpi-label">Ganancia estimada</div>
-            <div className={`kpi-value ${totals.profit >= 0 ? 'profit-positive' : 'profit-negative'}`}>
-              {formatMoney(totals.profit)}
+        <div className="card kpi-panel" role="group" aria-label="Resumen de pedidos">
+          <h3>
+            <TrendingUp size={16} aria-hidden="true" /> Resumen
+          </h3>
+          <div className="kpi-list">
+            <div className="kpi-line">
+              <span className="kpi-label">Pedidos</span>
+              <span className="kpi-value">{openOrders.length}</span>
+            </div>
+            <div className="kpi-line">
+              <span className="kpi-label">Total cotizado</span>
+              <span className="kpi-value">{formatMoney(totals.revenue)}</span>
+            </div>
+            <div className="kpi-line">
+              <span className="kpi-label">Cobrado</span>
+              <span className="kpi-value">{formatMoney(paid)}</span>
+            </div>
+            <div className="kpi-line">
+              <span className="kpi-label">Ganancia estimada</span>
+              <span
+                className={`kpi-value ${totals.profit >= 0 ? 'profit-positive' : 'profit-negative'}`}
+              >
+                {formatMoney(totals.profit)}
+              </span>
             </div>
           </div>
         </div>

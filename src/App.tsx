@@ -238,36 +238,37 @@ export default function App() {
     <>
       <header className="app-header">
         <h1>Panel de Impresión 3D</h1>
-        <nav
-          id="main-tabs"
-          className={`tab-nav ${menuOpen ? 'tab-nav-open' : ''}`}
-          role="tablist"
-          aria-label="Secciones principales"
-        >
-          {tabs.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              role="tab"
-              aria-selected={tab === id}
-              onClick={() => {
-                setTab(id)
-                setMenuOpen(false)
-              }}
-            >
-              <Icon size={15} aria-hidden="true" /> {label}
-            </button>
-          ))}
-        </nav>
-        {isCloudMode && session && (
-          <div className="header-account">
-            <span className="session-user" title={session.user.email}>
-              Conectado como {session.user.email}
-            </span>
-            <button className="signout-btn" onClick={handleSignOut} title="Cerrar sesión">
-              <LogOut size={15} aria-hidden="true" /> Salir
-            </button>
-          </div>
-        )}
+        {/* Desktop: display:contents flattens this wrapper into the header
+            grid, so the layout is unchanged (tabs centered, account right).
+            Phone: it becomes the hamburger dropdown panel — email on top,
+            tabs in the middle, Salir at the bottom. */}
+        <div className={`header-menu ${menuOpen ? 'header-menu-open' : ''}`}>
+          <nav id="main-tabs" className="tab-nav" role="tablist" aria-label="Secciones principales">
+            {tabs.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                role="tab"
+                aria-selected={tab === id}
+                onClick={() => {
+                  setTab(id)
+                  setMenuOpen(false)
+                }}
+              >
+                <Icon size={15} aria-hidden="true" /> {label}
+              </button>
+            ))}
+          </nav>
+          {isCloudMode && session && (
+            <div className="header-account">
+              <span className="session-user" title={session.user.email}>
+                Conectado como {session.user.email}
+              </span>
+              <button className="signout-btn" onClick={handleSignOut} title="Cerrar sesión">
+                <LogOut size={15} aria-hidden="true" /> Salir
+              </button>
+            </div>
+          )}
+        </div>
         <button
           className="menu-toggle"
           onClick={() => setMenuOpen((o) => !o)}

@@ -570,67 +570,6 @@ th.num {
   gap: var(--space-3);
 }
 
-/* Narrow screens: title, account, and hamburger share the top row; the
-   tabs move into a dropdown panel that drops below the header bar when
-   the hamburger is tapped.
-
-   minmax(0, 1fr) lets the title column shrink below its content (grid
-   items default to min-width:auto, which caused the header to overflow
-   the viewport on phones); the email truncates harder and side padding
-   tightens to keep everything inside the screen edges.
-
-   z-index:30 lifts the header (and, by inheritance of its stacking
-   context, the dropdown panel) above the fixed .menu-backdrop, so the
-   bar stays readable and the hamburger keeps working to close. */
-@media (max-width: 800px) {
-  .app-header {
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    padding: var(--space-3) var(--space-4);
-    position: relative;
-    z-index: 30;
-  }
-  .header-account {
-    grid-row: 1;
-    grid-column: 2;
-  }
-  .menu-toggle {
-    display: inline-flex;
-    grid-row: 1;
-    grid-column: 3;
-  }
-  .session-user {
-    max-width: 140px;
-  }
-
-  /* Tab dropdown: out of grid flow (absolute), hidden until toggled. */
-  .tab-nav {
-    display: none;
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    flex-direction: column;
-    background: var(--color-header);
-    border-bottom: 1px solid var(--color-border);
-    padding: var(--space-2) var(--space-4);
-  }
-  .tab-nav.tab-nav-open {
-    display: flex;
-  }
-  .tab-nav button {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .menu-backdrop {
-    display: block;
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.45);
-    z-index: 15;
-  }
-}
-
 .session-user {
   font-size: 12px;
   color: var(--color-muted-foreground);
@@ -666,7 +605,7 @@ th.num {
   outline-offset: 2px;
 }
 
-/* ---- Hamburger menu (phone only; tabs are visible inline on desktop) ---- */
+/* ---- Hamburger (phone only; tabs are visible inline on desktop) ---- */
 .menu-toggle {
   display: none;
   font-family: var(--font-body);
@@ -690,9 +629,98 @@ th.num {
   outline-offset: 2px;
 }
 
-/* Dim layer behind the open mobile menu; only rendered (and shown) on phone. */
+/* Dim layer behind the open mobile menu; hidden (and usually unrendered) on desktop. */
 .menu-backdrop {
   display: none;
+}
+
+/* ---- Menu wrapper: tabs + account ---- */
+/* Desktop: transparent to the header grid — display:contents promotes the
+   nav into the centered auto column and the account into the right 1fr,
+   exactly as if they were direct children. On phone it becomes the
+   dropdown panel instead (see the media query below). */
+.header-menu {
+  display: contents;
+}
+
+/* Narrow screens: the header bar holds only the title (left) and the
+   hamburger (right); .header-menu becomes a dropdown panel below the bar
+   with, top to bottom: the connected email, the tabs, and Salir.
+
+   minmax(0, 1fr) lets the title column shrink below its content (grid
+   items default to min-width:auto, which caused the header to overflow
+   the viewport on phones).
+
+   z-index:30 lifts the header — and, through its stacking context, the
+   panel — above the fixed .menu-backdrop, so the bar stays readable and
+   the hamburger keeps working to close.
+
+   NOTE: every base rule this query overrides must be declared BEFORE
+   the query (same specificity, later wins); keep it last in the section. */
+@media (max-width: 800px) {
+  .app-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: var(--space-3) var(--space-4);
+    position: relative;
+    z-index: 30;
+  }
+  .menu-toggle {
+    display: inline-flex;
+    grid-row: 1;
+    grid-column: 2;
+  }
+
+  /* Dropdown panel: hidden until the hamburger is tapped. */
+  .header-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-header);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .header-menu.header-menu-open {
+    display: flex;
+  }
+
+  /* Inside the panel the account comes apart: display:contents promotes
+     the email and Salir to panel items, and order stacks them as
+     email (-1, with divider) → tabs (0) → Salir (1), matching the
+     requested layout without duplicating the DOM. */
+  .header-account {
+    display: contents;
+  }
+  .session-user {
+    order: -1;
+    max-width: none;
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .tab-nav {
+    flex-direction: column;
+    width: 100%;
+    gap: var(--space-1);
+  }
+  .tab-nav button {
+    width: 100%;
+    justify-content: center;
+  }
+  .signout-btn {
+    order: 1;
+    justify-content: center;
+  }
+
+  .menu-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 15;
+  }
 }
 
 /* ---- Icon-only buttons in tables ---- */

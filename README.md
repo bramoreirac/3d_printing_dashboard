@@ -36,22 +36,6 @@ running them must be signed in to the console):
 | 5 | `0005_create_order_with_stock_deduction.sql` | Atomic save/delete of an order, with automatic stock deduction and reversal |
 | 6 | `0006_delete_registries.sql` | Delete a machine (with its maintenance) or a supply (with its material and movements); blocked while orders reference them |
 
-## Deploying to Vercel
-
-1. Push the project to GitHub from the development machine
-   (`git remote add origin <url>` and `git push -u origin main`).
-2. On Vercel: **Add New → Project** → import the repository. Vite is detected
-   automatically: build `npm run build`, output `dist`.
-3. Under **Environment Variables** in the Vercel project, add (same values as
-   the local `.env`):
-   - `VITE_SUPABASE_URL` = `https://YOUR-PROJECT.supabase.co`
-   - `VITE_SUPABASE_PUBLISHABLE_KEY` = the project's publishable key
-4. Deploy. **Verification**: the deployed URL must show the **sign-in
-   screen**. If it shows the dashboard with sample data, the environment
-   variables are missing (save them and redeploy).
-5. In Supabase: **Authentication → URL Configuration** → Site URL = the
-   Vercel URL, so account-confirmation emails point at the deployed dashboard.
-
 ## Operations notes
 
 - The free tiers of Vercel and Supabase may not permit commercial use:
